@@ -14,16 +14,335 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      lead_activities: {
+        Row: {
+          contact_method: Database["public"]["Enums"]["contact_method"] | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          lead_id: string
+          metadata: Json | null
+          type: Database["public"]["Enums"]["activity_type"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          contact_method?: Database["public"]["Enums"]["contact_method"] | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          lead_id: string
+          metadata?: Json | null
+          type: Database["public"]["Enums"]["activity_type"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          contact_method?: Database["public"]["Enums"]["contact_method"] | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          lead_id?: string
+          metadata?: Json | null
+          type?: Database["public"]["Enums"]["activity_type"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_attachments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          lead_id: string
+          mime_type: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          lead_id: string
+          mime_type?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          lead_id?: string
+          mime_type?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_attachments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_notes: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          lead_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_notes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          city: string | null
+          company_or_person: string
+          contact_method: Database["public"]["Enums"]["contact_method"] | null
+          contact_name: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          estimated_value: number | null
+          has_been_contacted: boolean
+          id: string
+          next_follow_up: string | null
+          notes: string | null
+          owner_id: string | null
+          phone: string | null
+          position: number
+          segment: string | null
+          source: string | null
+          stage_id: string
+          temperature: Database["public"]["Enums"]["lead_temperature"]
+          uf: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          city?: string | null
+          company_or_person: string
+          contact_method?: Database["public"]["Enums"]["contact_method"] | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          estimated_value?: number | null
+          has_been_contacted?: boolean
+          id?: string
+          next_follow_up?: string | null
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          position?: number
+          segment?: string | null
+          source?: string | null
+          stage_id: string
+          temperature?: Database["public"]["Enums"]["lead_temperature"]
+          uf?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          city?: string | null
+          company_or_person?: string
+          contact_method?: Database["public"]["Enums"]["contact_method"] | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          estimated_value?: number | null
+          has_been_contacted?: boolean
+          id?: string
+          next_follow_up?: string | null
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          position?: number
+          segment?: string | null
+          source?: string | null
+          stage_id?: string
+          temperature?: Database["public"]["Enums"]["lead_temperature"]
+          uf?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipeline_stages: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_lost: boolean
+          is_won: boolean
+          key: string
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          key: string
+          name: string
+          position: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          key?: string
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      activity_type:
+        | "stage_change"
+        | "note_added"
+        | "contact_logged"
+        | "attachment_added"
+        | "lead_created"
+        | "lead_updated"
+      app_role: "admin" | "user"
+      contact_method:
+        | "whatsapp"
+        | "ligacao"
+        | "email"
+        | "reuniao"
+        | "indicacao"
+        | "outro"
+      lead_temperature: "frio" | "morno" | "quente"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +469,25 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      activity_type: [
+        "stage_change",
+        "note_added",
+        "contact_logged",
+        "attachment_added",
+        "lead_created",
+        "lead_updated",
+      ],
+      app_role: ["admin", "user"],
+      contact_method: [
+        "whatsapp",
+        "ligacao",
+        "email",
+        "reuniao",
+        "indicacao",
+        "outro",
+      ],
+      lead_temperature: ["frio", "morno", "quente"],
+    },
   },
 } as const
