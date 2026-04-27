@@ -2,7 +2,9 @@ import { Lead, Profile } from "@/types/crm";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/constants";
-import { Calendar, DollarSign, User, CheckCircle2, Circle, Phone, Mail, MessageSquare, AlertCircle } from "lucide-react";
+import {
+  Calendar, DollarSign, User, CheckCircle2, Phone, Mail, MessageSquare, AlertTriangle, UserX,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -35,25 +37,30 @@ function getFollowUpStatus(date: string | null | undefined): FollowUpStatus {
   if (d.getTime() === today.getTime()) return "hoje";
   return "futuro";
 }
-const followUpStyles: Record<FollowUpStatus, string> = {
-  atrasado: "text-status-atrasado",
-  hoje: "text-status-pendente",
-  futuro: "text-muted-foreground",
-  sem: "text-muted-foreground",
-};
 
 export const LeadCard = ({ lead, profiles, onClick, onDragStart }: Props) => {
   const owner = profiles.find((p) => p.id === lead.owner_id);
   const followUpStatus = getFollowUpStatus(lead.next_follow_up);
+  const isOverdue = followUpStatus === "atrasado";
+  const isToday = followUpStatus === "hoje";
+  const noContact = !lead.has_been_contacted;
 
   return (
     <Card
       draggable
       onDragStart={onDragStart}
       onClick={onClick}
-      className="group relative overflow-hidden p-3 pl-3.5 cursor-pointer bg-card border border-border/70 shadow-xs hover:shadow-card-hover hover:border-border hover:-translate-y-0.5 transition-all duration-200 active:cursor-grabbing active:scale-[0.99]"
+      className={cn(
+        "group relative overflow-hidden p-3 pl-3.5 cursor-pointer bg-card border shadow-xs",
+        "hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200",
+        "active:cursor-grabbing active:scale-[0.99]",
+        // Destaques de atenção
+        isOverdue && "border-destructive/40 ring-1 ring-destructive/20 bg-destructive/[0.02]",
+        !isOverdue && isToday && "border-accent/40 ring-1 ring-accent/20",
+        !isOverdue && !isToday && "border-border/70 hover:border-border",
+      )}
     >
-      {/* Temperature side bar */}
+      {/* Barra lateral — temperatura */}
       <span
         aria-hidden
         className={cn(
@@ -62,30 +69,54 @@ export const LeadCard = ({ lead, profiles, onClick, onDragStart }: Props) => {
         )}
       />
 
-      <div className="flex items-start justify-between gap-2 mb-2">
+      {/* Bandeiras de atenção (canto superior direito quando aplicável) */}
+      {(isOverdue || noContact) && (
+        <div className="absolute top-2 right-2 flex gap-1">
+          {isOverdue && (
+            <span
+              title="Follow-up atrasado"
+              className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-destructive text-destructive-foreground shadow-sm animate-fade-in-up"
+            >
+              <AlertTriangle className="h-3 w-3" />
+            </span>
+          )}
+          {noContact && !isOverdue && (
+            <span
+              title="Sem contato registrado"
+              className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-warning/90 text-warning-foreground shadow-sm"
+            >
+              <UserX className="h-3 w-3" />
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="flex items-start justify-between gap-2 mb-2 pr-12">
         <h4 className="font-semibold text-sm leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
           {lead.company_or_person}
         </h4>
+      </div>
+
+      <div className="flex items-center gap-1.5 mb-2">
         <Badge
           variant="outline"
           className={cn(
-            "text-[10px] px-1.5 py-0 font-medium shrink-0 rounded-md",
+            "text-[10px] px-1.5 py-0 font-medium rounded-md",
             tempStyles[lead.temperature]
           )}
         >
           {tempLabel[lead.temperature]}
         </Badge>
+        {lead.contact_name && (
+          <span className="text-xs text-muted-foreground truncate">{lead.contact_name}</span>
+        )}
       </div>
-
-      {lead.contact_name && (
-        <p className="text-xs text-muted-foreground mb-2 line-clamp-1">{lead.contact_name}</p>
-      )}
 
       <div className="space-y-1.5 text-xs">
         {Number(lead.estimated_value) > 0 && (
           <div className="flex items-center gap-1.5 text-foreground font-semibold">
             <DollarSign className="h-3 w-3 text-success" />
-            <span>{formatCurrency(Number(lead.estimated_value))}</span>
+            <span className="tabular-nums">{formatCurrency(Number(lead.estimated_value))}</span>
           </div>
         )}
 
@@ -97,28 +128,31 @@ export const LeadCard = ({ lead, profiles, onClick, onDragStart }: Props) => {
         )}
 
         {lead.next_follow_up && (
-          <div className={cn("flex items-center gap-1.5 font-medium", followUpStyles[followUpStatus])}>
-            {followUpStatus === "atrasado" ? (
-              <AlertCircle className="h-3 w-3" />
-            ) : (
-              <Calendar className="h-3 w-3" />
+          <div
+            className={cn(
+              "flex items-center gap-1.5 font-medium",
+              isOverdue && "text-destructive",
+              isToday && "text-accent",
+              !isOverdue && !isToday && "text-muted-foreground",
             )}
+          >
+            {isOverdue ? <AlertTriangle className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
             <span>
-              {followUpStatus === "atrasado" && "Atrasado · "}
-              {followUpStatus === "hoje" && "Hoje · "}
+              {isOverdue && "Atrasado · "}
+              {isToday && "Hoje · "}
               {formatDate(lead.next_follow_up)}
             </span>
           </div>
         )}
 
-        <div className="flex items-center gap-1.5 pt-1 border-t border-border/50 mt-2">
+        <div className="flex items-center gap-1.5 pt-1.5 border-t border-border/50 mt-2">
           {lead.has_been_contacted ? (
             <span className="inline-flex items-center gap-1 text-[10px] text-success font-medium">
               <CheckCircle2 className="h-3 w-3" /> Contatado
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-              <Circle className="h-3 w-3" /> Sem contato
+            <span className="inline-flex items-center gap-1 text-[10px] text-warning font-semibold">
+              <UserX className="h-3 w-3" /> Sem contato
             </span>
           )}
           <span className="ml-auto inline-flex items-center gap-1 text-muted-foreground">
