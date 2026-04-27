@@ -103,20 +103,24 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-header p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-header p-4 relative overflow-hidden">
+      {/* Subtle decorative accents */}
+      <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-accent/5 blur-3xl pointer-events-none" />
+
+      <div className="w-full max-w-md relative">
         <div className="flex flex-col items-center mb-8 text-primary-foreground">
-          <div className="bg-accent rounded-2xl p-3 mb-4 shadow-elevated">
+          <div className="bg-accent rounded-2xl p-3.5 mb-4 shadow-elevated">
             <Building2 className="h-8 w-8 text-accent-foreground" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Valle Consultores</h1>
-          <p className="text-primary-foreground/80 mt-1">CRM Comercial</p>
+          <p className="text-primary-foreground/75 mt-1 text-sm uppercase tracking-wider font-medium">CRM Comercial</p>
         </div>
 
-        <Card className="shadow-elevated border-0">
-          <CardHeader>
-            <CardTitle>Acesse o sistema</CardTitle>
-            <CardDescription>Entre com suas credenciais</CardDescription>
+        <Card className="shadow-elevated border-0 animate-fade-in-up">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl">Acesse o sistema</CardTitle>
+            <CardDescription>Entre com suas credenciais corporativas</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login">
@@ -125,7 +129,7 @@ export default function Auth() {
                 <TabsTrigger value="signup">Criar conta</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="login" className="space-y-4 mt-4">
+              <TabsContent value="login" className="space-y-4 mt-5">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="le">E-mail</Label>
@@ -135,14 +139,14 @@ export default function Auth() {
                     <Label htmlFor="lp">Senha</Label>
                     <Input id="lp" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" variant="accent" className="w-full font-semibold" disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Entrar
                   </Button>
                 </form>
               </TabsContent>
 
-              <TabsContent value="signup" className="space-y-4 mt-4">
+              <TabsContent value="signup" className="space-y-4 mt-5">
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="sn">Nome completo</Label>
@@ -157,7 +161,7 @@ export default function Auth() {
                     <Input id="sp" type="password" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required />
                     <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" variant="accent" className="w-full font-semibold" disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Criar conta
                   </Button>
@@ -168,7 +172,7 @@ export default function Auth() {
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Ou continue com</span>
+                <span className="bg-card px-2 text-muted-foreground tracking-wider">Ou continue com</span>
               </div>
             </div>
 
