@@ -122,7 +122,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
             </div>
             <div className="space-y-2">
               <Label>Origem do lead</Label>
-              <Select value={form.source} onValueChange={(v) => setForm({ ...form, source: v })}>
+              <Select value={form.source || undefined} onValueChange={(v) => setForm({ ...form, source: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>{SOURCE_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
@@ -137,14 +137,14 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
             </div>
             <div className="space-y-2">
               <Label>UF</Label>
-              <Select value={form.uf} onValueChange={(v) => setForm({ ...form, uf: v })}>
+              <Select value={form.uf || undefined} onValueChange={(v) => setForm({ ...form, uf: v })}>
                 <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
                 <SelectContent>{UF_OPTIONS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Responsável</Label>
-              <Select value={form.owner_id} onValueChange={(v) => setForm({ ...form, owner_id: v })}>
+              <Select value={form.owner_id || undefined} onValueChange={(v) => setForm({ ...form, owner_id: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   {profiles.map((p) => (
@@ -178,7 +178,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
 
             <div className="space-y-2">
               <Label>Forma de contato</Label>
-              <Select value={form.contact_method} onValueChange={(v) => setForm({ ...form, contact_method: v })}>
+              <Select value={form.contact_method || undefined} onValueChange={(v) => setForm({ ...form, contact_method: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>{CONTACT_METHOD_OPTIONS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
               </Select>
