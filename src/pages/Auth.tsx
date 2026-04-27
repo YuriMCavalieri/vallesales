@@ -38,7 +38,10 @@ export default function Auth() {
       emailSchema.parse(loginEmail);
       passwordSchema.parse(loginPassword);
     } catch (err) {
-      if (err instanceof z.ZodError) return toast.error(err.errors[0].message);
+      if (err instanceof z.ZodError) {
+        toast.error(err.errors[0].message);
+      }
+      return;
     }
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
@@ -60,10 +63,13 @@ export default function Auth() {
       emailSchema.parse(signupEmail);
       passwordSchema.parse(signupPassword);
     } catch (err) {
-      if (err instanceof z.ZodError) return toast.error(err.errors[0].message);
+      if (err instanceof z.ZodError) {
+        toast.error(err.errors[0].message);
+      }
+      return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
       password: signupPassword,
       options: {
@@ -74,8 +80,11 @@ export default function Auth() {
     setLoading(false);
     if (error) {
       toast.error(error.message.includes("already") ? "Este e-mail já está cadastrado" : error.message);
+    } else if (data.session) {
+      toast.success("Conta criada! Você já está conectado.");
+      navigate("/", { replace: true });
     } else {
-      toast.success("Conta criada! Verifique seu e-mail para confirmar.");
+      toast.success("Conta criada! Faça login para continuar.");
     }
   };
 
