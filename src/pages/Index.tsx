@@ -62,20 +62,20 @@ const Index = () => {
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="bg-gradient-header text-primary-foreground shadow-card">
+      <header className="bg-gradient-header text-primary-foreground shadow-sm border-b border-primary/20">
         <div className="px-4 md:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="bg-accent rounded-lg p-1.5 shrink-0">
+            <div className="bg-accent rounded-lg p-2 shrink-0 shadow-sm">
               <Building2 className="h-5 w-5 text-accent-foreground" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-bold text-base md:text-lg leading-tight truncate">Valle Consultores</h1>
-              <p className="text-[11px] text-primary-foreground/70 leading-tight truncate">CRM Comercial</p>
+              <h1 className="font-bold text-base md:text-lg leading-tight truncate tracking-tight">Valle Consultores</h1>
+              <p className="text-[11px] text-primary-foreground/70 leading-tight truncate uppercase tracking-wider font-medium">CRM Comercial</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="hidden md:block text-sm text-primary-foreground/80 truncate max-w-[200px]">{user?.email}</span>
-            <Button variant="ghost" size="sm" onClick={signOut} className="text-primary-foreground hover:bg-white/10">
+            <Button variant="ghost" size="sm" onClick={signOut} className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground">
               <LogOut className="h-4 w-4 md:mr-1" />
               <span className="hidden md:inline">Sair</span>
             </Button>
@@ -84,27 +84,32 @@ const Index = () => {
       </header>
 
       {/* Stats + actions */}
-      <div className="px-4 md:px-6 py-4 border-b bg-card">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+      <div className="px-4 md:px-6 py-5 border-b border-border bg-card">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <div>
-            <h2 className="text-xl md:text-2xl font-bold tracking-tight">Funil comercial</h2>
-            <p className="text-sm text-muted-foreground">Acompanhe e gerencie seus leads</p>
+            <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">Funil comercial</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">Acompanhe e gerencie seus leads em tempo real</p>
           </div>
           <div className="flex gap-2">
             <div className="relative flex-1 md:w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar lead..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-9" />
+              <Input
+                placeholder="Buscar lead..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-9 bg-background border-border focus-visible:ring-accent/40"
+              />
             </div>
-            <Button onClick={() => openNew()} className="shrink-0">
+            <Button onClick={() => openNew()} variant="accent" className="shrink-0 font-semibold">
               <Plus className="h-4 w-4 mr-1" /> Novo lead
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard icon={<TrendingUp className="h-4 w-4" />} label="Leads em aberto" value={String(stats.count)} />
-          <StatCard icon={<DollarSign className="h-4 w-4" />} label="Pipeline" value={formatCurrency(stats.pipelineValue)} />
-          <StatCard icon={<Thermometer className="h-4 w-4" />} label="Fechados" value={formatCurrency(stats.wonValue)} accent />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <StatCard icon={<TrendingUp className="h-4 w-4" />} label="Leads em aberto" value={String(stats.count)} tone="primary" />
+          <StatCard icon={<DollarSign className="h-4 w-4" />} label="Pipeline" value={formatCurrency(stats.pipelineValue)} tone="accent" />
+          <StatCard icon={<Thermometer className="h-4 w-4" />} label="Fechados" value={formatCurrency(stats.wonValue)} tone="success" />
         </div>
       </div>
 
@@ -112,7 +117,7 @@ const Index = () => {
       <main className="flex-1 overflow-hidden px-4 md:px-6 py-4">
         {loading ? (
           <div className="h-full flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin text-accent" />
           </div>
         ) : (
           <KanbanBoard
@@ -149,12 +154,20 @@ const Index = () => {
   );
 };
 
-const StatCard = ({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) => (
-  <Card className="p-3 flex items-center gap-3">
-    <div className={`rounded-lg p-2 ${accent ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}>{icon}</div>
+const toneStyles: Record<string, string> = {
+  primary: "bg-primary/8 text-primary",
+  accent: "bg-accent/10 text-accent",
+  success: "bg-success/10 text-success",
+};
+
+const StatCard = ({
+  icon, label, value, tone = "primary",
+}: { icon: React.ReactNode; label: string; value: string; tone?: "primary" | "accent" | "success" }) => (
+  <Card className="p-3.5 flex items-center gap-3 border-border/70 shadow-xs hover:shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-border">
+    <div className={`rounded-lg p-2.5 ${toneStyles[tone]}`}>{icon}</div>
     <div className="min-w-0">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground truncate">{label}</p>
-      <p className="font-bold text-sm md:text-base truncate">{value}</p>
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground truncate font-medium">{label}</p>
+      <p className="font-bold text-base md:text-lg truncate tabular-nums text-foreground">{value}</p>
     </div>
   </Card>
 );

@@ -60,10 +60,12 @@ export default {
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
+          soft: "hsl(var(--success-soft))",
         },
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
+          soft: "hsl(var(--warning-soft))",
         },
         stage: {
           novo: "hsl(var(--stage-novo))",
@@ -79,14 +81,24 @@ export default {
           morno: "hsl(var(--temp-morno))",
           quente: "hsl(var(--temp-quente))",
         },
+        status: {
+          pendente: "hsl(var(--status-pendente))",
+          atrasado: "hsl(var(--status-atrasado))",
+          feito: "hsl(var(--status-feito))",
+          sem: "hsl(var(--status-sem))",
+        },
       },
       backgroundImage: {
         "gradient-header": "var(--gradient-header)",
+        "gradient-accent": "var(--gradient-accent)",
+        "gradient-surface": "var(--gradient-surface)",
       },
       boxShadow: {
+        xs: "var(--shadow-xs)",
         card: "var(--shadow-card)",
         "card-hover": "var(--shadow-card-hover)",
         elevated: "var(--shadow-elevated)",
+        focus: "var(--shadow-focus)",
       },
       borderRadius: {
         lg: "var(--radius)",
