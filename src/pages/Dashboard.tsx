@@ -60,12 +60,17 @@ const Dashboard = () => {
     );
 
     const noContactCount = openLeads.filter((l) => !l.has_been_contacted).length;
-    const overdueCount = openLeads.filter((l) => {
-      if (!l.next_follow_up) return false;
-      const d = new Date(l.next_follow_up);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime() < today.getTime();
-    }).length;
+    const overdueCount = openLeads.filter((l) => isOverdue(l, today)).length;
+    const followTodayCount = openLeads.filter((l) => isToday(l, today)).length;
+    const hotCount = openLeads.filter((l) => l.temperature === "quente").length;
+    const actionTodayLeads = openLeads.filter((l) => needsActionToday(l, today));
+    const actionTodayCount = actionTodayLeads.length;
+
+    // Distribuição por prioridade (somente leads em aberto)
+    const priorityCounts = { alta: 0, media: 0, baixa: 0, normal: 0 };
+    openLeads.forEach((l) => {
+      priorityCounts[getLeadPriority(l, today)]++;
+    });
 
     const conversionRate = allLeads.length > 0
       ? (wonLeads.length / allLeads.length) * 100
@@ -93,6 +98,11 @@ const Dashboard = () => {
       totalValue,
       noContactCount,
       overdueCount,
+      followTodayCount,
+      hotCount,
+      actionTodayCount,
+      actionTodayLeads,
+      priorityCounts,
       conversionRate,
       byStage,
     };
