@@ -37,6 +37,16 @@ export const KanbanBoard = ({ stages, leads, profiles, onSelectLead, onAddInStag
     return map;
   }, [stages, leads]);
 
+  // Maior valor entre todas as etapas — para dimensionar a barra de valor
+  const maxStageValue = useMemo(() => {
+    let max = 0;
+    stages.forEach((s) => {
+      const v = (leadsByStage[s.id] || []).reduce((sum, l) => sum + Number(l.estimated_value || 0), 0);
+      if (v > max) max = v;
+    });
+    return max;
+  }, [stages, leadsByStage]);
+
   const handleDrop = async (stageId: string) => {
     if (!draggedId) return;
     const lead = leads.find((l) => l.id === draggedId);
@@ -48,17 +58,26 @@ export const KanbanBoard = ({ stages, leads, profiles, onSelectLead, onAddInStag
 
   return (
     <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin h-full">
-      {stages.map((stage) => {
+      {stages.map((stage, idx) => {
         const stageLeads = leadsByStage[stage.id] || [];
         const total = stageLeads.reduce((sum, l) => sum + Number(l.estimated_value || 0), 0);
         const isOver = overStageId === stage.id;
         const dotColor = stageColorBar[stage.key] || "bg-muted-foreground";
+        const valuePct = maxStageValue > 0 ? Math.max(4, Math.round((total / maxStageValue) * 100)) : 0;
+
+        // Conversão simples vs. etapa anterior (ignora etapas terminais como referência inicial)
+        const prevStage = idx > 0 ? stages[idx - 1] : null;
+        const prevCount = prevStage ? (leadsByStage[prevStage.id] || []).length : 0;
+        const conversion =
+          prevStage && prevCount > 0
+            ? Math.round((stageLeads.length / prevCount) * 100)
+            : null;
 
         return (
           <div
             key={stage.id}
             className={cn(
-              "flex-shrink-0 w-72 flex flex-col rounded-xl border transition-all duration-200",
+              "group flex-shrink-0 w-72 flex flex-col rounded-xl border transition-all duration-200",
               isOver
                 ? "bg-accent/5 border-accent/40 shadow-card"
                 : "bg-muted/40 border-transparent hover:border-border/60"
@@ -86,9 +105,35 @@ export const KanbanBoard = ({ stages, leads, profiles, onSelectLead, onAddInStag
                   <Plus className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground font-medium tabular-nums">
-                {formatCurrency(total)}
-              </p>
+
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] text-foreground/80 font-semibold tabular-nums">
+                  {formatCurrency(total)}
+                </p>
+                {conversion !== null && (
+                  <span
+                    title={`Conversão a partir de "${prevStage?.name}" (${stageLeads.length}/${prevCount})`}
+                    className={cn(
+                      "text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md border",
+                      conversion >= 70
+                        ? "bg-success/10 text-success border-success/25"
+                        : conversion >= 40
+                        ? "bg-accent/10 text-accent border-accent/25"
+                        : "bg-muted text-muted-foreground border-border"
+                    )}
+                  >
+                    {conversion}%
+                  </span>
+                )}
+              </div>
+
+              {/* Barra proporcional de valor da etapa */}
+              <div className="mt-2 h-1 w-full rounded-full bg-border/60 overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full transition-all duration-500", dotColor)}
+                  style={{ width: `${valuePct}%` }}
+                />
+              </div>
             </div>
 
             <div
