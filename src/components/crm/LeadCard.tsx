@@ -3,9 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import {
-  Calendar, DollarSign, User, CheckCircle2, Phone, Mail, MessageSquare, AlertTriangle, UserX,
+  Calendar, DollarSign, User, CheckCircle2, Phone, Mail, MessageSquare, AlertTriangle, UserX, Flame, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getLeadPriority, needsActionToday, priorityMeta } from "@/lib/priority";
 
 interface Props {
   lead: Lead;
