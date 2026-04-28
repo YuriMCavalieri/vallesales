@@ -46,6 +46,8 @@ export const LeadCard = ({ lead, profiles, onClick, onDragStart }: Props) => {
   const isToday = followUpStatus === "hoje";
   const noContact = !lead.has_been_contacted;
   const isHot = lead.temperature === "quente";
+  const priority = getLeadPriority(lead);
+  const actionToday = needsActionToday(lead);
 
   return (
     <Card
