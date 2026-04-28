@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Link } from "react-router-dom";
 import {
   Building2, Plus, LogOut, Search, Loader2, Thermometer, DollarSign, TrendingUp,
-  Users, AlertTriangle, X, UserCheck,
+  Users, AlertTriangle, X, UserCheck, LayoutDashboard, Kanban,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Lead } from "@/types/crm";
@@ -143,6 +144,20 @@ const Index = () => {
               <p className="text-[11px] text-primary-foreground/70 leading-tight truncate uppercase tracking-wider font-medium">CRM Comercial</p>
             </div>
           </div>
+          <nav className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
+            <Link to="/">
+              <Button variant="ghost" size="sm" className="bg-white/10 text-primary-foreground hover:bg-white/15 h-8">
+                <Kanban className="h-4 w-4 md:mr-1.5" />
+                <span className="hidden md:inline">Funil</span>
+              </Button>
+            </Link>
+            <Link to="/dashboard">
+              <Button variant="ghost" size="sm" className="text-primary-foreground/80 hover:bg-white/10 hover:text-primary-foreground h-8">
+                <LayoutDashboard className="h-4 w-4 md:mr-1.5" />
+                <span className="hidden md:inline">Dashboard</span>
+              </Button>
+            </Link>
+          </nav>
           <div className="flex items-center gap-2">
             <span className="hidden md:block text-sm text-primary-foreground/80 truncate max-w-[200px]">{user?.email}</span>
             <Button variant="ghost" size="sm" onClick={signOut} className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground">
