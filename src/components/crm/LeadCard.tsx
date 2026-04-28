@@ -103,10 +103,11 @@ export const LeadCard = ({ lead, profiles, onClick, onDragStart }: Props) => {
         <Badge
           variant="outline"
           className={cn(
-            "text-[10px] px-1.5 py-0 font-medium rounded-md",
+            "text-[10px] px-1.5 py-0 font-medium rounded-md inline-flex items-center gap-1",
             tempStyles[lead.temperature]
           )}
         >
+          {isHot && <span className="h-1.5 w-1.5 rounded-full bg-temp-quente animate-pulse" />}
           {tempLabel[lead.temperature]}
         </Badge>
         {lead.contact_name && (
