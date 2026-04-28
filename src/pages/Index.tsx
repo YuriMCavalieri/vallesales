@@ -77,6 +77,7 @@ const Index = () => {
       if (statusFilter === "atrasados" && !isOverdue(l)) return false;
       if (statusFilter === "sem_contato" && l.has_been_contacted) return false;
       if (statusFilter === "follow_hoje" && !isToday(l)) return false;
+      if (statusFilter === "acao_hoje" && !needsActionToday(l, today)) return false;
       return true;
     });
   }, [leads.data, search, ownerFilter, statusFilter, today, onlyMine, user?.id]);
