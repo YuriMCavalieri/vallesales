@@ -212,7 +212,24 @@ const Index = () => {
             )}
           </div>
 
-          <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+          {/* Apenas meus leads */}
+          <button
+            type="button"
+            onClick={() => setOnlyMine((v) => !v)}
+            className={cn(
+              "h-9 px-3 inline-flex items-center gap-2 rounded-md border text-sm font-medium transition-all shrink-0",
+              onlyMine
+                ? "bg-accent text-accent-foreground border-accent shadow-sm"
+                : "bg-background text-foreground border-border hover:border-accent/40 hover:text-accent"
+            )}
+            title="Mostrar somente leads em que sou responsável"
+          >
+            <UserCheck className="h-4 w-4" />
+            <span className="hidden md:inline">Meus leads</span>
+            <Switch checked={onlyMine} className="pointer-events-none scale-75 -mr-1" />
+          </button>
+
+          <Select value={ownerFilter} onValueChange={setOwnerFilter} disabled={onlyMine}>
             <SelectTrigger className="md:w-56 h-9 bg-background">
               <Users className="h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="Responsável" />
