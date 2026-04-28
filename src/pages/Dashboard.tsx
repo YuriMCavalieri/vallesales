@@ -445,4 +445,17 @@ const KpiCard = ({
   </Card>
 );
 
+const PriorityBlock = ({
+  label, count, total, className,
+}: { label: string; count: number; total: number; className?: string }) => {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <div className={cn("rounded-lg border p-4", className)}>
+      <p className="text-[11px] uppercase tracking-wider font-semibold opacity-80">{label}</p>
+      <p className="text-2xl font-bold tabular-nums leading-tight mt-1">{count}</p>
+      <p className="text-[11px] opacity-70 mt-0.5 tabular-nums">{pct}% do funil em aberto</p>
+    </div>
+  );
+};
+
 export default Dashboard;
