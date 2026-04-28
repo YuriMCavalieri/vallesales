@@ -8,12 +8,13 @@ import { formatCurrency } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
   Building2, LogOut, LayoutDashboard, Kanban, Loader2,
-  Users, DollarSign, TrendingUp, Trophy, XCircle, AlertTriangle, UserX, Target,
+  Users, DollarSign, TrendingUp, Trophy, XCircle, AlertTriangle, UserX, Target, Zap, Flame,
 } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
+import { getLeadPriority, needsActionToday, isOverdue, isToday } from "@/lib/priority";
 
 const stageColorVar: Record<string, string> = {
   novo_lead: "hsl(var(--stage-novo))",
@@ -59,12 +60,17 @@ const Dashboard = () => {
     );
 
     const noContactCount = openLeads.filter((l) => !l.has_been_contacted).length;
-    const overdueCount = openLeads.filter((l) => {
-      if (!l.next_follow_up) return false;
-      const d = new Date(l.next_follow_up);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime() < today.getTime();
-    }).length;
+    const overdueCount = openLeads.filter((l) => isOverdue(l, today)).length;
+    const followTodayCount = openLeads.filter((l) => isToday(l, today)).length;
+    const hotCount = openLeads.filter((l) => l.temperature === "quente").length;
+    const actionTodayLeads = openLeads.filter((l) => needsActionToday(l, today));
+    const actionTodayCount = actionTodayLeads.length;
+
+    // Distribuição por prioridade (somente leads em aberto)
+    const priorityCounts = { alta: 0, media: 0, baixa: 0, normal: 0 };
+    openLeads.forEach((l) => {
+      priorityCounts[getLeadPriority(l, today)]++;
+    });
 
     const conversionRate = allLeads.length > 0
       ? (wonLeads.length / allLeads.length) * 100
@@ -92,6 +98,11 @@ const Dashboard = () => {
       totalValue,
       noContactCount,
       overdueCount,
+      followTodayCount,
+      hotCount,
+      actionTodayCount,
+      actionTodayLeads,
+      priorityCounts,
       conversionRate,
       byStage,
     };
@@ -161,6 +172,41 @@ const Dashboard = () => {
         </div>
       ) : (
         <main className="flex-1 px-4 md:px-6 py-6 space-y-6">
+          {/* Banner: Ações de hoje */}
+          <Card
+            className={cn(
+              "p-5 border-l-4 flex flex-col md:flex-row md:items-center gap-4 shadow-card",
+              metrics.actionTodayCount > 0
+                ? "border-l-accent bg-accent/5"
+                : "border-l-success bg-success/5"
+            )}
+          >
+            <div className={cn(
+              "rounded-xl p-3 shrink-0",
+              metrics.actionTodayCount > 0 ? "bg-accent text-accent-foreground" : "bg-success/15 text-success"
+            )}>
+              <Zap className="h-6 w-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Leads que precisam de ação hoje
+              </p>
+              <p className="text-2xl md:text-3xl font-bold tabular-nums text-foreground leading-tight">
+                {metrics.actionTodayCount}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {metrics.actionTodayCount > 0
+                  ? `${metrics.overdueCount} atrasado(s) · ${metrics.followTodayCount} follow-up hoje · ${metrics.hotCount} quente(s) sem ação`
+                  : "Tudo em dia. Nenhum lead requer atenção imediata."}
+              </p>
+            </div>
+            <Link to="/" className="shrink-0">
+              <Button variant="accent" size="sm" className="font-semibold">
+                Abrir funil
+              </Button>
+            </Link>
+          </Card>
+
           {/* KPIs principais */}
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
@@ -187,11 +233,38 @@ const Dashboard = () => {
               <KpiCard tone={metrics.noContactCount > 0 ? "warning" : "muted"}
                 icon={<UserX className="h-4 w-4" />}
                 label="Sem contato" value={String(metrics.noContactCount)} />
-              <KpiCard tone="primary" icon={<TrendingUp className="h-4 w-4" />}
-                label="Valor total"
-                value={formatCurrency(metrics.totalValue)}
-                hint="pipeline + ganhos + perdidos" />
+              <KpiCard tone={metrics.hotCount > 0 ? "danger" : "muted"}
+                icon={<Flame className="h-4 w-4" />}
+                label="Leads quentes" value={String(metrics.hotCount)} />
             </div>
+          </section>
+
+          {/* Distribuição por prioridade */}
+          <section>
+            <Card className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold text-sm text-foreground">Prioridade dos leads em aberto</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Classificação automática por urgência (atrasados, quentes, sem contato)
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <PriorityBlock label="Alta" count={metrics.priorityCounts.alta}
+                  total={metrics.openCount}
+                  className="bg-destructive/10 border-destructive/30 text-destructive" />
+                <PriorityBlock label="Média" count={metrics.priorityCounts.media}
+                  total={metrics.openCount}
+                  className="bg-warning/10 border-warning/30 text-warning" />
+                <PriorityBlock label="Baixa" count={metrics.priorityCounts.baixa}
+                  total={metrics.openCount}
+                  className="bg-muted border-border text-muted-foreground" />
+                <PriorityBlock label="Normal" count={metrics.priorityCounts.normal}
+                  total={metrics.openCount}
+                  className="bg-muted/60 border-border text-muted-foreground" />
+              </div>
+            </Card>
           </section>
 
           {/* Gráficos */}
@@ -371,5 +444,18 @@ const KpiCard = ({
     </div>
   </Card>
 );
+
+const PriorityBlock = ({
+  label, count, total, className,
+}: { label: string; count: number; total: number; className?: string }) => {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <div className={cn("rounded-lg border p-4", className)}>
+      <p className="text-[11px] uppercase tracking-wider font-semibold opacity-80">{label}</p>
+      <p className="text-2xl font-bold tabular-nums leading-tight mt-1">{count}</p>
+      <p className="text-[11px] opacity-70 mt-0.5 tabular-nums">{pct}% do funil em aberto</p>
+    </div>
+  );
+};
 
 export default Dashboard;

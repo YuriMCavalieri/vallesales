@@ -12,15 +12,16 @@ import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import {
   Building2, Plus, LogOut, Search, Loader2, Thermometer, DollarSign, TrendingUp,
-  Users, AlertTriangle, X, UserCheck, LayoutDashboard, Kanban,
+  Users, AlertTriangle, X, UserCheck, LayoutDashboard, Kanban, Zap,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Lead } from "@/types/crm";
 import { formatCurrency } from "@/lib/constants";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { needsActionToday } from "@/lib/priority";
 
-type StatusFilter = "todos" | "atrasados" | "sem_contato" | "follow_hoje";
+type StatusFilter = "todos" | "atrasados" | "sem_contato" | "follow_hoje" | "acao_hoje";
 
 const Index = () => {
   const { signOut, user } = useAuth();
@@ -76,6 +77,7 @@ const Index = () => {
       if (statusFilter === "atrasados" && !isOverdue(l)) return false;
       if (statusFilter === "sem_contato" && l.has_been_contacted) return false;
       if (statusFilter === "follow_hoje" && !isToday(l)) return false;
+      if (statusFilter === "acao_hoje" && !needsActionToday(l, today)) return false;
       return true;
     });
   }, [leads.data, search, ownerFilter, statusFilter, today, onlyMine, user?.id]);
@@ -89,7 +91,8 @@ const Index = () => {
     const wonValue = all.filter((l) => l.stage_id === won).reduce((s, l) => s + Number(l.estimated_value || 0), 0);
     const overdue = open.filter(isOverdue).length;
     const noContact = open.filter((l) => !l.has_been_contacted).length;
-    return { count: open.length, pipelineValue, wonValue, overdue, noContact };
+    const actionToday = open.filter((l) => needsActionToday(l, today)).length;
+    return { count: open.length, pipelineValue, wonValue, overdue, noContact, actionToday };
   }, [leads.data, stages.data, today]);
 
   const openNew = (stageId?: string) => {
@@ -190,10 +193,19 @@ const Index = () => {
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
           <StatCard icon={<TrendingUp className="h-4 w-4" />} label="Em aberto" value={String(stats.count)} tone="primary" />
           <StatCard icon={<DollarSign className="h-4 w-4" />} label="Pipeline" value={formatCurrency(stats.pipelineValue)} tone="accent" />
           <StatCard icon={<Thermometer className="h-4 w-4" />} label="Fechados" value={formatCurrency(stats.wonValue)} tone="success" />
+          <StatCard
+            icon={<Zap className="h-4 w-4" />}
+            label="Ações hoje"
+            value={String(stats.actionToday)}
+            tone={stats.actionToday > 0 ? "accent" : "muted"}
+            clickable
+            active={statusFilter === "acao_hoje"}
+            onClick={() => setStatusFilter(statusFilter === "acao_hoje" ? "todos" : "acao_hoje")}
+          />
           <StatCard
             icon={<AlertTriangle className="h-4 w-4" />}
             label="Atrasados"
@@ -264,6 +276,7 @@ const Index = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos os status</SelectItem>
+              <SelectItem value="acao_hoje">⚡ Ações hoje</SelectItem>
               <SelectItem value="atrasados">⚠ Follow-up atrasado</SelectItem>
               <SelectItem value="follow_hoje">📅 Follow-up hoje</SelectItem>
               <SelectItem value="sem_contato">○ Sem contato</SelectItem>
@@ -294,6 +307,11 @@ const Index = () => {
             {statusFilter === "follow_hoje" && (
               <Badge variant="outline" className="bg-accent/10 text-accent border-accent/30">
                 Follow-up hoje
+              </Badge>
+            )}
+            {statusFilter === "acao_hoje" && (
+              <Badge variant="outline" className="bg-accent/10 text-accent border-accent/30">
+                Ações hoje
               </Badge>
             )}
           </div>
