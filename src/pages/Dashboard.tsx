@@ -8,12 +8,13 @@ import { formatCurrency } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
   Building2, LogOut, LayoutDashboard, Kanban, Loader2,
-  Users, DollarSign, TrendingUp, Trophy, XCircle, AlertTriangle, UserX, Target,
+  Users, DollarSign, TrendingUp, Trophy, XCircle, AlertTriangle, UserX, Target, Zap, Flame,
 } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
+import { getLeadPriority, needsActionToday, isOverdue, isToday } from "@/lib/priority";
 
 const stageColorVar: Record<string, string> = {
   novo_lead: "hsl(var(--stage-novo))",
