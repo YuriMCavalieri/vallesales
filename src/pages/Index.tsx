@@ -309,6 +309,11 @@ const Index = () => {
                 Follow-up hoje
               </Badge>
             )}
+            {statusFilter === "acao_hoje" && (
+              <Badge variant="outline" className="bg-accent/10 text-accent border-accent/30">
+                Ações hoje
+              </Badge>
+            )}
           </div>
         )}
       </div>
