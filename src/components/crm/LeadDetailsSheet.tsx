@@ -37,6 +37,7 @@ const tempLabel: Record<string, string> = { frio: "Frio", morno: "Morno", quente
 
 const activityLabel: Record<string, string> = {
   stage_change: "Mudança de etapa",
+  owner_change: "Mudança de responsável",
   note_added: "Observação",
   contact_logged: "Contato realizado",
   attachment_added: "Anexo",
