@@ -74,27 +74,33 @@ export const LeadCard = ({ lead, profiles, onClick, onDragStart }: Props) => {
         )}
       />
 
-      {/* Bandeiras de atenção (canto superior direito quando aplicável) */}
-      {(isOverdue || noContact) && (
-        <div className="absolute top-2 right-2 flex gap-1">
-          {isOverdue && (
-            <span
-              title="Follow-up atrasado"
-              className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-destructive text-destructive-foreground shadow-sm animate-fade-in-up"
-            >
-              <AlertTriangle className="h-3 w-3" />
-            </span>
-          )}
-          {noContact && !isOverdue && (
-            <span
-              title="Sem contato registrado"
-              className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-warning/90 text-warning-foreground shadow-sm"
-            >
-              <UserX className="h-3 w-3" />
-            </span>
-          )}
-        </div>
-      )}
+      {/* Bandeiras de atenção + prioridade (canto superior direito) */}
+      <div className="absolute top-2 right-2 flex items-center gap-1">
+        {actionToday && (
+          <span
+            title="Precisa de ação hoje"
+            className="inline-flex items-center gap-0.5 px-1.5 h-5 rounded-full bg-accent text-accent-foreground shadow-sm text-[9px] font-bold uppercase tracking-wide"
+          >
+            <Zap className="h-2.5 w-2.5" /> Hoje
+          </span>
+        )}
+        {priority === "alta" && (
+          <span
+            title="Prioridade alta"
+            className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-destructive text-destructive-foreground shadow-sm"
+          >
+            <AlertTriangle className="h-3 w-3" />
+          </span>
+        )}
+        {priority === "media" && !actionToday && (
+          <span
+            title="Prioridade média"
+            className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-warning/90 text-warning-foreground shadow-sm"
+          >
+            {noContact ? <UserX className="h-3 w-3" /> : <Flame className="h-3 w-3" />}
+          </span>
+        )}
+      </div>
 
       <div className="flex items-start justify-between gap-2 mb-2 pr-12">
         <h4 className="font-semibold text-sm leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
