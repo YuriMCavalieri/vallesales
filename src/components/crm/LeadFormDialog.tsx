@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useCreateLead, useProfiles, useStages, useUpdateLead } from "@/hooks/useLeads";
+import { useAuth } from "@/hooks/useAuth";
 import { Lead } from "@/types/crm";
 import { CONTACT_METHOD_OPTIONS, SOURCE_OPTIONS, TEMPERATURE_OPTIONS, UF_OPTIONS } from "@/lib/constants";
-import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -28,6 +29,7 @@ const tempDot: Record<string, string> = {
 export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Props) => {
   const { data: stages = [] } = useStages();
   const { data: profiles = [] } = useProfiles();
+  const { user } = useAuth();
   const create = useCreateLead();
   const update = useUpdateLead();
   const firstFieldRef = useRef<HTMLInputElement>(null);
@@ -169,12 +171,29 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
             </div>
 
             <div className="space-y-2">
-              <Label>Responsável</Label>
-              <Select value={form.owner_id || undefined} onValueChange={(v) => setForm({ ...form, owner_id: v })}>
+              <div className="flex items-center justify-between">
+                <Label>Responsável</Label>
+                {user?.id && form.owner_id !== user.id && (
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, owner_id: user.id })}
+                    className="text-[11px] font-medium text-accent hover:underline inline-flex items-center gap-1"
+                  >
+                    <UserCheck className="h-3 w-3" /> Atribuir a mim
+                  </button>
+                )}
+              </div>
+              <Select
+                value={form.owner_id || "__none__"}
+                onValueChange={(v) => setForm({ ...form, owner_id: v === "__none__" ? "" : v })}
+              >
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__none__">Sem responsável</SelectItem>
                   {profiles.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.full_name || p.email}</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.full_name || p.email}{p.id === user?.id ? " (eu)" : ""}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
