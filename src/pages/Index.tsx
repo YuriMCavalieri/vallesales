@@ -276,6 +276,7 @@ const Index = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos os status</SelectItem>
+              <SelectItem value="acao_hoje">⚡ Ações hoje</SelectItem>
               <SelectItem value="atrasados">⚠ Follow-up atrasado</SelectItem>
               <SelectItem value="follow_hoje">📅 Follow-up hoje</SelectItem>
               <SelectItem value="sem_contato">○ Sem contato</SelectItem>
