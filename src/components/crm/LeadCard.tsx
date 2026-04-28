@@ -44,6 +44,7 @@ export const LeadCard = ({ lead, profiles, onClick, onDragStart }: Props) => {
   const isOverdue = followUpStatus === "atrasado";
   const isToday = followUpStatus === "hoje";
   const noContact = !lead.has_been_contacted;
+  const isHot = lead.temperature === "quente";
 
   return (
     <Card
@@ -54,10 +55,11 @@ export const LeadCard = ({ lead, profiles, onClick, onDragStart }: Props) => {
         "group relative overflow-hidden p-3 pl-3.5 cursor-pointer bg-card border shadow-xs",
         "hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200",
         "active:cursor-grabbing active:scale-[0.99]",
-        // Destaques de atenção
+        // Destaques de atenção (prioridade: atrasado > quente > hoje)
         isOverdue && "border-destructive/40 ring-1 ring-destructive/20 bg-destructive/[0.02]",
-        !isOverdue && isToday && "border-accent/40 ring-1 ring-accent/20",
-        !isOverdue && !isToday && "border-border/70 hover:border-border",
+        !isOverdue && isHot && "border-temp-quente/45 ring-1 ring-temp-quente/25 shadow-[0_0_0_3px_hsl(var(--temp-quente)/0.08)]",
+        !isOverdue && !isHot && isToday && "border-accent/40 ring-1 ring-accent/20",
+        !isOverdue && !isHot && !isToday && "border-border/70 hover:border-border",
       )}
     >
       {/* Barra lateral — temperatura */}
