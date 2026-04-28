@@ -91,7 +91,8 @@ const Index = () => {
     const wonValue = all.filter((l) => l.stage_id === won).reduce((s, l) => s + Number(l.estimated_value || 0), 0);
     const overdue = open.filter(isOverdue).length;
     const noContact = open.filter((l) => !l.has_been_contacted).length;
-    return { count: open.length, pipelineValue, wonValue, overdue, noContact };
+    const actionToday = open.filter((l) => needsActionToday(l, today)).length;
+    return { count: open.length, pipelineValue, wonValue, overdue, noContact, actionToday };
   }, [leads.data, stages.data, today]);
 
   const openNew = (stageId?: string) => {
