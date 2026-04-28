@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Building2, Plus, LogOut, Search, Loader2, Thermometer, DollarSign, TrendingUp,
-  Users, AlertTriangle, X,
+  Users, AlertTriangle, X, UserCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Lead } from "@/types/crm";
@@ -28,6 +30,7 @@ const Index = () => {
   const [search, setSearch] = useState("");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
+  const [onlyMine, setOnlyMine] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [defaultStage, setDefaultStage] = useState<string | undefined>();
@@ -56,6 +59,8 @@ const Index = () => {
   const filteredLeads = useMemo(() => {
     const q = search.toLowerCase().trim();
     return (leads.data ?? []).filter((l) => {
+      // apenas meus leads
+      if (onlyMine && l.owner_id !== user?.id) return false;
       // busca
       if (q) {
         const hay = [l.company_or_person, l.contact_name, l.email, l.phone, l.city]
@@ -72,7 +77,7 @@ const Index = () => {
       if (statusFilter === "follow_hoje" && !isToday(l)) return false;
       return true;
     });
-  }, [leads.data, search, ownerFilter, statusFilter, today]);
+  }, [leads.data, search, ownerFilter, statusFilter, today, onlyMine, user?.id]);
 
   const stats = useMemo(() => {
     const all = leads.data ?? [];
@@ -116,11 +121,12 @@ const Index = () => {
   }, [formOpen, detailsOpen]);
 
   const loading = stages.isLoading || leads.isLoading;
-  const hasActiveFilters = ownerFilter !== "all" || statusFilter !== "todos" || !!search;
+  const hasActiveFilters = ownerFilter !== "all" || statusFilter !== "todos" || !!search || onlyMine;
   const clearFilters = () => {
     setSearch("");
     setOwnerFilter("all");
     setStatusFilter("todos");
+    setOnlyMine(false);
   };
 
   return (
