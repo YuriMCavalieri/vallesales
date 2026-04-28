@@ -193,10 +193,19 @@ const Index = () => {
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
           <StatCard icon={<TrendingUp className="h-4 w-4" />} label="Em aberto" value={String(stats.count)} tone="primary" />
           <StatCard icon={<DollarSign className="h-4 w-4" />} label="Pipeline" value={formatCurrency(stats.pipelineValue)} tone="accent" />
           <StatCard icon={<Thermometer className="h-4 w-4" />} label="Fechados" value={formatCurrency(stats.wonValue)} tone="success" />
+          <StatCard
+            icon={<Zap className="h-4 w-4" />}
+            label="Ações hoje"
+            value={String(stats.actionToday)}
+            tone={stats.actionToday > 0 ? "accent" : "muted"}
+            clickable
+            active={statusFilter === "acao_hoje"}
+            onClick={() => setStatusFilter(statusFilter === "acao_hoje" ? "todos" : "acao_hoje")}
+          />
           <StatCard
             icon={<AlertTriangle className="h-4 w-4" />}
             label="Atrasados"
