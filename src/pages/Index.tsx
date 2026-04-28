@@ -12,15 +12,16 @@ import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import {
   Building2, Plus, LogOut, Search, Loader2, Thermometer, DollarSign, TrendingUp,
-  Users, AlertTriangle, X, UserCheck, LayoutDashboard, Kanban,
+  Users, AlertTriangle, X, UserCheck, LayoutDashboard, Kanban, Zap,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Lead } from "@/types/crm";
 import { formatCurrency } from "@/lib/constants";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { needsActionToday } from "@/lib/priority";
 
-type StatusFilter = "todos" | "atrasados" | "sem_contato" | "follow_hoje";
+type StatusFilter = "todos" | "atrasados" | "sem_contato" | "follow_hoje" | "acao_hoje";
 
 const Index = () => {
   const { signOut, user } = useAuth();
