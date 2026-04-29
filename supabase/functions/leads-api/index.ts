@@ -69,11 +69,14 @@ const cleanLeadPayload = (payload: LeadPayload = {}) => {
 
 const normalizeLead = (lead: any) => {
   if (!lead) return lead;
+  const followUp = lead.next_follow_up;
   return {
     ...lead,
-    next_follow_up: lead.next_follow_up
-      ? String(lead.next_follow_up).slice(0, 10)
-      : null,
+    next_follow_up: followUp instanceof Date
+      ? followUp.toISOString().slice(0, 10)
+      : followUp
+        ? String(followUp).slice(0, 10)
+        : null,
   };
 };
 
