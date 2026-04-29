@@ -334,6 +334,7 @@ export type Database = {
         | "attachment_added"
         | "lead_created"
         | "lead_updated"
+        | "owner_change"
       app_role: "admin" | "user"
       contact_method:
         | "whatsapp"
@@ -477,6 +478,7 @@ export const Constants = {
         "attachment_added",
         "lead_created",
         "lead_updated",
+        "owner_change",
       ],
       app_role: ["admin", "user"],
       contact_method: [
