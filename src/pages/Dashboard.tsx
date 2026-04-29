@@ -143,6 +143,7 @@ const Dashboard = () => {
                 <span className="hidden md:inline">Dashboard</span>
               </Button>
             </Link>
+            <PermissionGatedTeamLink />
           </nav>
 
           <div className="flex items-center gap-2">
