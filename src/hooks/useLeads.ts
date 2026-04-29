@@ -4,6 +4,13 @@ import type { Lead, LeadInsert, LeadUpdate, PipelineStage, Profile } from "@/typ
 import { toast } from "sonner";
 import { useAuth } from "./useAuth";
 
+const invokeLeadsApi = async <T>(body: Record<string, unknown>): Promise<T> => {
+  const { data, error } = await supabase.functions.invoke("leads-api", { body });
+  if (error) throw error;
+  if ((data as any)?.error) throw new Error((data as any).error);
+  return data as T;
+};
+
 export const useStages = () => {
   return useQuery({
     queryKey: ["pipeline_stages"],
@@ -19,13 +26,8 @@ export const useLeads = () => {
   return useQuery({
     queryKey: ["leads"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("leads")
-        .select("*")
-        .order("position", { ascending: true })
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as Lead[];
+      const data = await invokeLeadsApi<{ leads: Lead[] }>({ action: "list" });
+      return data.leads;
     },
   });
 };
@@ -52,15 +54,10 @@ export const useAssignableProfiles = () => {
 
 export const useCreateLead = () => {
   const qc = useQueryClient();
-  const { user } = useAuth();
   return useMutation({
     mutationFn: async (lead: Omit<LeadInsert, "created_by" | "updated_by">) => {
-      const { data, error } = await supabase
-        .from("leads")
-        .insert({ ...lead, created_by: user?.id, updated_by: user?.id })
-        .select().single();
-      if (error) throw error;
-      return data;
+      const data = await invokeLeadsApi<{ lead: Lead }>({ action: "create", lead });
+      return data.lead;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["leads"] });
@@ -72,16 +69,10 @@ export const useCreateLead = () => {
 
 export const useUpdateLead = () => {
   const qc = useQueryClient();
-  const { user } = useAuth();
   return useMutation({
     mutationFn: async ({ id, ...updates }: LeadUpdate & { id: string }) => {
-      const { data, error } = await supabase
-        .from("leads")
-        .update({ ...updates, updated_by: user?.id })
-        .eq("id", id)
-        .select().single();
-      if (error) throw error;
-      return data;
+      const data = await invokeLeadsApi<{ lead: Lead }>({ action: "update", id, updates });
+      return data.lead;
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["leads"] });
@@ -96,8 +87,7 @@ export const useDeleteLead = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("leads").delete().eq("id", id);
-      if (error) throw error;
+      await invokeLeadsApi<{ ok: boolean }>({ action: "delete", id });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["leads"] });
@@ -112,9 +102,8 @@ export const useLeadDetails = (leadId: string | null) => {
     queryKey: ["lead", leadId],
     enabled: !!leadId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("leads").select("*").eq("id", leadId!).single();
-      if (error) throw error;
-      return data as Lead;
+      const data = await invokeLeadsApi<{ lead: Lead }>({ action: "get", id: leadId! });
+      return data.lead;
     },
   });
 };
