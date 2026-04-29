@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useStages, useLeads } from "@/hooks/useLeads";
+import { PermissionGatedTeamLink } from "@/components/PermissionGatedTeamLink";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
