@@ -60,8 +60,6 @@ export const LeadDetailsSheet = ({ lead, open, onOpenChange, profiles, stages, o
   const logContact = useLogContact(lead?.id ?? "");
   const upload = useUploadAttachment(lead?.id ?? "");
   const del = useDeleteLead();
-
-  if (!lead) return null;
   const updateLead = useUpdateLead();
   const { user } = useAuth();
 
