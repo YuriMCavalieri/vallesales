@@ -140,11 +140,16 @@ export const LeadDetailsSheet = ({ lead, open, onOpenChange, profiles, stages, o
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Sem responsável</SelectItem>
-                  {profiles.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.full_name || p.email}{user?.id === p.id ? " (eu)" : ""}
-                    </SelectItem>
-                  ))}
+                  {profiles
+                    .filter((p) =>
+                      ((p as any).is_active !== false && (p as any).can_receive_leads !== false) ||
+                      p.id === lead.owner_id
+                    )
+                    .map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.full_name || p.email}{user?.id === p.id ? " (eu)" : ""}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
