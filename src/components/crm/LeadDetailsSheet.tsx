@@ -9,7 +9,9 @@ import { Lead, Profile, PipelineStage } from "@/types/crm";
 import {
   useLeadActivities, useLeadNotes, useLeadAttachments,
   useAddNote, useLogContact, useUploadAttachment, downloadAttachment, useDeleteLead,
+  useUpdateLead,
 } from "@/hooks/useLeads";
+import { useAuth } from "@/hooks/useAuth";
 import { CONTACT_METHOD_OPTIONS, formatCurrency, formatDate, formatDateTime } from "@/lib/constants";
 import {
   Phone, Mail, MapPin, User as UserIcon, DollarSign, Calendar,
