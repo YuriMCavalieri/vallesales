@@ -54,7 +54,6 @@ export const useAssignableProfiles = () => {
 
 export const useCreateLead = () => {
   const qc = useQueryClient();
-  const { user } = useAuth();
   return useMutation({
     mutationFn: async (lead: Omit<LeadInsert, "created_by" | "updated_by">) => {
       const data = await invokeLeadsApi<{ lead: Lead }>({ action: "create", lead });
@@ -70,7 +69,6 @@ export const useCreateLead = () => {
 
 export const useUpdateLead = () => {
   const qc = useQueryClient();
-  const { user } = useAuth();
   return useMutation({
     mutationFn: async ({ id, ...updates }: LeadUpdate & { id: string }) => {
       const data = await invokeLeadsApi<{ lead: Lead }>({ action: "update", id, updates });
