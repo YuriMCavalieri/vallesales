@@ -41,6 +41,15 @@ export const useProfiles = () => {
   });
 };
 
+/** Profiles ativos e que podem receber leads — usado em selects de responsável */
+export const useAssignableProfiles = () => {
+  const { data: all, ...rest } = useProfiles();
+  const data = (all ?? []).filter(
+    (p) => (p as any).is_active !== false && (p as any).can_receive_leads !== false
+  );
+  return { ...rest, data };
+};
+
 export const useCreateLead = () => {
   const qc = useQueryClient();
   const { user } = useAuth();
