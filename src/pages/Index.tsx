@@ -127,6 +127,7 @@ const Index = () => {
     return () => window.removeEventListener("keydown", handler);
   }, [formOpen, detailsOpen]);
 
+  // Não bloqueia em profiles — board renderiza mesmo se a lista de responsáveis falhar
   const loading = stages.isLoading || leads.isLoading;
   const hasActiveFilters = ownerFilter !== "all" || statusFilter !== "todos" || !!search || onlyMine;
   const clearFilters = () => {
@@ -327,8 +328,23 @@ const Index = () => {
       {/* Kanban */}
       <main className="flex-1 overflow-hidden px-4 md:px-6 py-4">
         {loading ? (
-          <div className="h-full flex items-center justify-center">
+          <div className="h-full flex flex-col items-center justify-center gap-3 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin text-accent" />
+            <p className="text-sm">Carregando dados...</p>
+          </div>
+        ) : (stages.isError || leads.isError) ? (
+          <div className="h-full flex flex-col items-center justify-center gap-3 max-w-md mx-auto text-center">
+            <AlertTriangle className="h-10 w-10 text-destructive" />
+            <h3 className="font-semibold text-lg">Não foi possível carregar os dados</h3>
+            <p className="text-sm text-muted-foreground">
+              {(stages.error as Error)?.message || (leads.error as Error)?.message || "Erro de conexão com o backend."}
+            </p>
+            <Button
+              variant="accent"
+              onClick={() => { stages.refetch(); leads.refetch(); profiles.refetch(); }}
+            >
+              Tentar novamente
+            </Button>
           </div>
         ) : (
           <KanbanBoard
