@@ -9,7 +9,9 @@ import { Lead, Profile, PipelineStage } from "@/types/crm";
 import {
   useLeadActivities, useLeadNotes, useLeadAttachments,
   useAddNote, useLogContact, useUploadAttachment, downloadAttachment, useDeleteLead,
+  useUpdateLead,
 } from "@/hooks/useLeads";
+import { useAuth } from "@/hooks/useAuth";
 import { CONTACT_METHOD_OPTIONS, formatCurrency, formatDate, formatDateTime } from "@/lib/constants";
 import {
   Phone, Mail, MapPin, User as UserIcon, DollarSign, Calendar,
@@ -58,6 +60,8 @@ export const LeadDetailsSheet = ({ lead, open, onOpenChange, profiles, stages, o
   const logContact = useLogContact(lead?.id ?? "");
   const upload = useUploadAttachment(lead?.id ?? "");
   const del = useDeleteLead();
+  const updateLead = useUpdateLead();
+  const { user } = useAuth();
 
   if (!lead) return null;
   const owner = profiles.find((p) => p.id === lead.owner_id);
@@ -120,7 +124,30 @@ export const LeadDetailsSheet = ({ lead, open, onOpenChange, profiles, stages, o
             {lead.phone && <Info icon={<Phone className="h-3.5 w-3.5" />} label="Telefone" value={lead.phone} />}
             {lead.email && <Info icon={<Mail className="h-3.5 w-3.5" />} label="E-mail" value={lead.email} />}
             {(lead.city || lead.uf) && <Info icon={<MapPin className="h-3.5 w-3.5" />} label="Localização" value={[lead.city, lead.uf].filter(Boolean).join(" / ")} />}
-            {owner && <Info icon={<UserIcon className="h-3.5 w-3.5" />} label="Responsável" value={owner.full_name || owner.email || ""} />}
+            <div className="space-y-1 col-span-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                <UserIcon className="h-3.5 w-3.5" />Responsável
+              </p>
+              <Select
+                value={lead.owner_id || "__none__"}
+                onValueChange={(v) =>
+                  updateLead.mutate({ id: lead.id, owner_id: v === "__none__" ? null : v })
+                }
+                disabled={updateLead.isPending}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Sem responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sem responsável</SelectItem>
+                  {profiles.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.full_name || p.email}{user?.id === p.id ? " (eu)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {Number(lead.estimated_value) > 0 && <Info icon={<DollarSign className="h-3.5 w-3.5" />} label="Valor" value={formatCurrency(Number(lead.estimated_value))} />}
             {lead.next_follow_up && <Info icon={<Calendar className="h-3.5 w-3.5" />} label="Próximo follow-up" value={formatDate(lead.next_follow_up)} />}
             {lead.source && <Info label="Origem" value={lead.source} />}
