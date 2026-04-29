@@ -268,26 +268,32 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          can_receive_leads: boolean
           created_at: string
           email: string | null
           full_name: string | null
           id: string
+          is_active: boolean
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
+          can_receive_leads?: boolean
           created_at?: string
           email?: string | null
           full_name?: string | null
           id: string
+          is_active?: boolean
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
+          can_receive_leads?: boolean
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
+          is_active?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -318,6 +324,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_any_role: {
+        Args: {
+          _roles: Database["public"]["Enums"]["app_role"][]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -325,6 +338,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_active_user: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       activity_type:
@@ -335,7 +349,7 @@ export type Database = {
         | "lead_created"
         | "lead_updated"
         | "owner_change"
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "gestor" | "consultor" | "visualizador"
       contact_method:
         | "whatsapp"
         | "ligacao"
@@ -480,7 +494,7 @@ export const Constants = {
         "lead_updated",
         "owner_change",
       ],
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "gestor", "consultor", "visualizador"],
       contact_method: [
         "whatsapp",
         "ligacao",

@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useStages, useLeads, useProfiles } from "@/hooks/useLeads";
+import { usePermissions } from "@/hooks/useUserRoles";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
+import { PermissionGatedTeamLink } from "@/components/PermissionGatedTeamLink";
 import { LeadFormDialog } from "@/components/crm/LeadFormDialog";
 import { LeadDetailsSheet } from "@/components/crm/LeadDetailsSheet";
 import { Button } from "@/components/ui/button";
@@ -28,6 +30,7 @@ const Index = () => {
   const stages = useStages();
   const leads = useLeads();
   const profiles = useProfiles();
+  const perms = usePermissions();
 
   const [search, setSearch] = useState("");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
@@ -160,6 +163,7 @@ const Index = () => {
                 <span className="hidden md:inline">Dashboard</span>
               </Button>
             </Link>
+            <PermissionGatedTeamLink />
           </nav>
           <div className="flex items-center gap-2">
             <span className="hidden md:block text-sm text-primary-foreground/80 truncate max-w-[200px]">{user?.email}</span>
@@ -180,16 +184,18 @@ const Index = () => {
               Acompanhe e gerencie seus leads em tempo real
             </p>
           </div>
-          <Button
-            onClick={() => openNew()}
-            variant="accent"
-            size="lg"
-            className="shrink-0 font-semibold shadow-card"
-            title="Novo lead (atalho: N)"
-          >
-            <Plus className="h-4 w-4 mr-1" /> Novo lead
-            <kbd className="hidden md:inline-flex ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-black/15 rounded">N</kbd>
-          </Button>
+          {perms.canCreateLead && (
+            <Button
+              onClick={() => openNew()}
+              variant="accent"
+              size="lg"
+              className="shrink-0 font-semibold shadow-card"
+              title="Novo lead (atalho: N)"
+            >
+              <Plus className="h-4 w-4 mr-1" /> Novo lead
+              <kbd className="hidden md:inline-flex ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-black/15 rounded">N</kbd>
+            </Button>
+          )}
         </div>
 
         {/* KPIs */}
