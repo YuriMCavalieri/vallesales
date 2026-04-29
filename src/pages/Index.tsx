@@ -184,16 +184,18 @@ const Index = () => {
               Acompanhe e gerencie seus leads em tempo real
             </p>
           </div>
-          <Button
-            onClick={() => openNew()}
-            variant="accent"
-            size="lg"
-            className="shrink-0 font-semibold shadow-card"
-            title="Novo lead (atalho: N)"
-          >
-            <Plus className="h-4 w-4 mr-1" /> Novo lead
-            <kbd className="hidden md:inline-flex ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-black/15 rounded">N</kbd>
-          </Button>
+          {perms.canCreateLead && (
+            <Button
+              onClick={() => openNew()}
+              variant="accent"
+              size="lg"
+              className="shrink-0 font-semibold shadow-card"
+              title="Novo lead (atalho: N)"
+            >
+              <Plus className="h-4 w-4 mr-1" /> Novo lead
+              <kbd className="hidden md:inline-flex ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-black/15 rounded">N</kbd>
+            </Button>
+          )}
         </div>
 
         {/* KPIs */}
