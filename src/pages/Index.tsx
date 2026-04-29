@@ -30,6 +30,7 @@ const Index = () => {
   const stages = useStages();
   const leads = useLeads();
   const profiles = useProfiles();
+  const perms = usePermissions();
 
   const [search, setSearch] = useState("");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
