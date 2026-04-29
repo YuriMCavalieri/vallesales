@@ -127,6 +127,7 @@ const Index = () => {
     return () => window.removeEventListener("keydown", handler);
   }, [formOpen, detailsOpen]);
 
+  // Não bloqueia em profiles — board renderiza mesmo se a lista de responsáveis falhar
   const loading = stages.isLoading || leads.isLoading;
   const hasActiveFilters = ownerFilter !== "all" || statusFilter !== "todos" || !!search || onlyMine;
   const clearFilters = () => {
