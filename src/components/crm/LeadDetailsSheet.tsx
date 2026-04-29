@@ -62,6 +62,10 @@ export const LeadDetailsSheet = ({ lead, open, onOpenChange, profiles, stages, o
   const del = useDeleteLead();
 
   if (!lead) return null;
+  const updateLead = useUpdateLead();
+  const { user } = useAuth();
+
+  if (!lead) return null;
   const owner = profiles.find((p) => p.id === lead.owner_id);
   const stage = stages.find((s) => s.id === lead.stage_id);
 
