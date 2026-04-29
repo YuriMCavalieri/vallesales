@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useStages, useLeads, useProfiles } from "@/hooks/useLeads";
 import { usePermissions } from "@/hooks/useUserRoles";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
+import { PermissionGatedTeamLink } from "@/components/PermissionGatedTeamLink";
 import { LeadFormDialog } from "@/components/crm/LeadFormDialog";
 import { LeadDetailsSheet } from "@/components/crm/LeadDetailsSheet";
 import { Button } from "@/components/ui/button";
