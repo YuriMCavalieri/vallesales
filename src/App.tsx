@@ -11,7 +11,22 @@ import Equipe from "./pages/Equipe.tsx";
 import Auth from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Retry transient backend errors (ex: PGRST002 schema cache 503) com backoff
+      retry: (failureCount, error: any) => {
+        const msg = String(error?.message || "");
+        // Não tentar de novo em erros de auth/permission
+        if (msg.includes("JWT") || msg.includes("permission") || msg.includes("denied")) return false;
+        return failureCount < 3;
+      },
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
