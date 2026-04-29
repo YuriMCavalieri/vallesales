@@ -161,6 +161,7 @@ const Index = () => {
                 <span className="hidden md:inline">Dashboard</span>
               </Button>
             </Link>
+            <PermissionGatedTeamLink />
           </nav>
           <div className="flex items-center gap-2">
             <span className="hidden md:block text-sm text-primary-foreground/80 truncate max-w-[200px]">{user?.email}</span>
