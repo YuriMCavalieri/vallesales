@@ -67,6 +67,16 @@ const cleanLeadPayload = (payload: LeadPayload = {}) => {
   return cleaned;
 };
 
+const normalizeLead = (lead: any) => {
+  if (!lead) return lead;
+  return {
+    ...lead,
+    next_follow_up: lead.next_follow_up
+      ? String(lead.next_follow_up).slice(0, 10)
+      : null,
+  };
+};
+
 const roleFlags = (roles: AppRole[]) => {
   const has = (role: AppRole) => roles.includes(role);
   const isAdmin = has("admin");
@@ -182,7 +192,7 @@ serve(async (req) => {
               order by position asc, created_at desc
             `
           : [];
-      return json({ leads: rows });
+      return json({ leads: rows.map(normalizeLead) });
     }
 
     if (action === "get") {
@@ -191,7 +201,7 @@ serve(async (req) => {
       const [lead] = await sql`select * from public.leads where id = ${id} limit 1`;
       if (!lead) return fail("Lead não encontrado.", 404);
       if (!canAccessLead(lead, userId, roles)) return fail("Acesso negado ao lead.", 403);
-      return json({ lead });
+      return json({ lead: normalizeLead(lead) });
     }
 
     if (action === "create") {
@@ -219,7 +229,7 @@ serve(async (req) => {
         returning *
       `;
       await logActivity(created.id, "lead_created", `Lead criado: ${created.company_or_person}`, userId);
-      return json({ lead: created }, 201);
+      return json({ lead: normalizeLead(created) }, 201);
     }
 
     if (action === "update") {
@@ -270,7 +280,7 @@ serve(async (req) => {
         );
       }
 
-      return json({ lead: updated });
+      return json({ lead: normalizeLead(updated) });
     }
 
     if (action === "delete") {
