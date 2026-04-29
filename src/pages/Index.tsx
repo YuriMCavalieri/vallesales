@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useStages, useLeads, useProfiles } from "@/hooks/useLeads";
 import { usePermissions } from "@/hooks/useUserRoles";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
@@ -48,18 +48,18 @@ const Index = () => {
     return d;
   }, []);
 
-  const isOverdue = (lead: Lead) => {
+  const isOverdue = useCallback((lead: Lead) => {
     if (!lead.next_follow_up) return false;
     const d = new Date(lead.next_follow_up);
     d.setHours(0, 0, 0, 0);
     return d.getTime() < today.getTime();
-  };
-  const isToday = (lead: Lead) => {
+  }, [today]);
+  const isToday = useCallback((lead: Lead) => {
     if (!lead.next_follow_up) return false;
     const d = new Date(lead.next_follow_up);
     d.setHours(0, 0, 0, 0);
     return d.getTime() === today.getTime();
-  };
+  }, [today]);
 
   const filteredLeads = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -83,7 +83,7 @@ const Index = () => {
       if (statusFilter === "acao_hoje" && !needsActionToday(l, today)) return false;
       return true;
     });
-  }, [leads.data, search, ownerFilter, statusFilter, today, onlyMine, user?.id]);
+  }, [leads.data, search, ownerFilter, statusFilter, today, onlyMine, user?.id, isOverdue, isToday]);
 
   const stats = useMemo(() => {
     const all = leads.data ?? [];
@@ -96,7 +96,7 @@ const Index = () => {
     const noContact = open.filter((l) => !l.has_been_contacted).length;
     const actionToday = open.filter((l) => needsActionToday(l, today)).length;
     return { count: open.length, pipelineValue, wonValue, overdue, noContact, actionToday };
-  }, [leads.data, stages.data, today]);
+  }, [leads.data, stages.data, today, isOverdue]);
 
   const openNew = (stageId?: string) => {
     setEditLead(null);

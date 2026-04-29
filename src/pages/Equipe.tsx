@@ -73,9 +73,9 @@ const Equipe = () => {
   if (!perms.canManageTeam) return <Navigate to="/" replace />;
 
   const rolesByUser = new Map<string, AppRole>();
-  (allRoles.data ?? []).forEach((r: any) => {
+  (allRoles.data ?? []).forEach((r) => {
     // pega a primeira role, prioriza admin > gestor > consultor > visualizador > user
-    const order: Record<string, number> = { admin: 1, gestor: 2, consultor: 3, visualizador: 4, user: 5 };
+    const order: Record<AppRole, number> = { admin: 1, gestor: 2, consultor: 3, visualizador: 4, user: 5 };
     const cur = rolesByUser.get(r.user_id);
     if (!cur || (order[r.role] ?? 99) < (order[cur] ?? 99)) {
       rolesByUser.set(r.user_id, r.role);
@@ -194,8 +194,8 @@ const UserRow = ({
 }) => {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile.full_name ?? "");
-  const isActive = (profile as any).is_active !== false;
-  const canReceive = (profile as any).can_receive_leads !== false;
+  const isActive = profile.is_active !== false;
+  const canReceive = profile.can_receive_leads !== false;
 
   return (
     <tr className="border-b last:border-0 hover:bg-muted/20">

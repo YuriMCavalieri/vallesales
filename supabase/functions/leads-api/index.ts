@@ -30,6 +30,11 @@ const authClient = createClient(supabaseUrl, serviceRoleKey, {
 type AppRole = "admin" | "gestor" | "consultor" | "visualizador" | "user";
 
 type LeadPayload = Record<string, unknown>;
+type LeadRow = Record<string, unknown> & {
+  created_by?: string | null;
+  next_follow_up?: Date | string | null;
+  owner_id?: string | null;
+};
 
 const allowedLeadFields = new Set([
   "company_or_person",
@@ -67,7 +72,7 @@ const cleanLeadPayload = (payload: LeadPayload = {}) => {
   return cleaned;
 };
 
-const normalizeLead = (lead: any) => {
+const normalizeLead = (lead: LeadRow | null) => {
   if (!lead) return lead;
   const followUp = lead.next_follow_up;
   return {
@@ -94,7 +99,7 @@ const roleFlags = (roles: AppRole[]) => {
   };
 };
 
-const canAccessLead = (lead: any, userId: string, roles: AppRole[]) => {
+const canAccessLead = (lead: LeadRow, userId: string, roles: AppRole[]) => {
   const flags = roleFlags(roles);
   if (flags.canReadAll) return true;
   if (flags.isConsultor) return lead.owner_id === userId || lead.created_by === userId;

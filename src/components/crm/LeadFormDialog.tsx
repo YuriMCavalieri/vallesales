@@ -192,7 +192,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
                   <SelectItem value="__none__">Sem responsável</SelectItem>
                   {profiles
                     .filter((p) =>
-                      ((p as any).is_active !== false && (p as any).can_receive_leads !== false) ||
+                      (p.is_active !== false && p.can_receive_leads !== false) ||
                       p.id === form.owner_id
                     )
                     .map((p) => (

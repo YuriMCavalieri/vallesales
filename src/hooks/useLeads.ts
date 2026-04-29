@@ -4,10 +4,17 @@ import type { Lead, LeadInsert, LeadUpdate, PipelineStage, Profile } from "@/typ
 import { toast } from "sonner";
 import { useAuth } from "./useAuth";
 
+type ApiErrorPayload = {
+  error?: string;
+};
+
+const hasApiError = (data: unknown): data is ApiErrorPayload =>
+  typeof data === "object" && data !== null && "error" in data;
+
 const invokeLeadsApi = async <T>(body: Record<string, unknown>): Promise<T> => {
   const { data, error } = await supabase.functions.invoke("leads-api", { body });
   if (error) throw error;
-  if ((data as any)?.error) throw new Error((data as any).error);
+  if (hasApiError(data) && data.error) throw new Error(data.error);
   return data as T;
 };
 
@@ -47,7 +54,7 @@ export const useProfiles = () => {
 export const useAssignableProfiles = () => {
   const { data: all, ...rest } = useProfiles();
   const data = (all ?? []).filter(
-    (p) => (p as any).is_active !== false && (p as any).can_receive_leads !== false
+    (p) => p.is_active !== false && p.can_receive_leads !== false
   );
   return { ...rest, data };
 };

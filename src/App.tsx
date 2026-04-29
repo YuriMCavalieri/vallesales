@@ -15,8 +15,13 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       // Retry transient backend errors (ex: PGRST002 schema cache 503) com backoff
-      retry: (failureCount, error: any) => {
-        const msg = String(error?.message || "");
+      retry: (failureCount, error: unknown) => {
+        const msg =
+          error instanceof Error
+            ? error.message
+            : typeof error === "object" && error !== null && "message" in error
+              ? String((error as { message?: unknown }).message || "")
+              : "";
         // Não tentar de novo em erros de auth/permission
         if (msg.includes("JWT") || msg.includes("permission") || msg.includes("denied")) return false;
         return failureCount < 3;
