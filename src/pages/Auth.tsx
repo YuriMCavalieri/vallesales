@@ -108,12 +108,12 @@ export default function Auth() {
       <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-accent/5 blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md relative">
-        <div className="flex flex-col items-center mb-8 text-primary-foreground">
+        <div className="flex flex-col items-center mb-8 text-header-foreground">
           <div className="bg-accent rounded-2xl p-3.5 mb-4 shadow-elevated">
             <Building2 className="h-8 w-8 text-accent-foreground" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Valle Consultores</h1>
-          <p className="text-primary-foreground/75 mt-1 text-sm uppercase tracking-wider font-medium">CRM Comercial</p>
+          <h1 className="text-3xl font-bold tracking-tight">Valle Sales</h1>
+          <p className="text-header-muted mt-1 text-sm tracking-wider font-medium">CRM Comercial</p>
         </div>
 
         <Card className="shadow-elevated border-0 animate-fade-in-up">

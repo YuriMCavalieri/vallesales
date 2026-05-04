@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ============================================================
-   Valle Consultores CRM — Design System Corporativo
+   Valle Sales CRM — Design System Corporativo
    Brand palette:
      Verde Valle  #2b3c46  (primary / institucional)
      Bege Valle   #b78362  (accent / destaque)
@@ -85,6 +85,14 @@
     --gradient-accent: linear-gradient(135deg, hsl(23 36% 55%), hsl(23 36% 48%));
     --gradient-surface: linear-gradient(180deg, hsl(0 0% 100%), hsl(240 6% 98%));
 
+    /* Header */
+    --header-foreground: 0 0% 100%;
+    --header-muted: 0 0% 84%;
+    --header-surface: 0 0% 100%;
+    --header-hover: 0 0% 100%;
+    --header-active: 0 0% 100%;
+    --header-border: 202 24% 30%;
+
     --shadow-xs: 0 1px 2px 0 hsl(202 24% 16% / 0.04);
     --shadow-sm: 0 1px 3px 0 hsl(202 24% 16% / 0.06), 0 1px 2px -1px hsl(202 24% 16% / 0.04);
     --shadow-card: 0 1px 3px 0 hsl(202 24% 16% / 0.05), 0 1px 2px -1px hsl(202 24% 16% / 0.04);
@@ -116,17 +124,36 @@
     --popover-foreground: 0 0% 96%;
     --primary: 0 0% 96%;
     --primary-foreground: 202 24% 14%;
+    --primary-hover: 0 0% 88%;
+    --primary-soft: 202 18% 18%;
     --secondary: 202 18% 20%;
     --secondary-foreground: 0 0% 96%;
     --muted: 202 18% 18%;
-    --muted-foreground: 285 5% 65%;
+    --muted-foreground: 210 10% 72%;
     --accent: 23 36% 55%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 60% 45%;
+    --accent-soft: 23 30% 18%;
+    --accent-hover: 23 36% 48%;
+    --destructive: 0 72% 60%;
     --destructive-foreground: 0 0% 96%;
+    --success: 152 50% 55%;
+    --success-foreground: 202 24% 10%;
+    --success-soft: 152 35% 17%;
+    --warning: 38 90% 62%;
+    --warning-foreground: 202 24% 10%;
+    --warning-soft: 38 55% 18%;
     --border: 202 18% 22%;
     --input: 202 18% 22%;
     --ring: 23 36% 55%;
+    --gradient-header: linear-gradient(135deg, hsl(202 28% 12%), hsl(202 24% 20%));
+    --gradient-surface: linear-gradient(180deg, hsl(202 24% 14%), hsl(202 24% 10%));
+    --header-foreground: 0 0% 100%;
+    --header-muted: 210 12% 82%;
+    --header-border: 202 20% 24%;
+    --shadow-xs: 0 1px 2px 0 hsl(0 0% 0% / 0.25);
+    --shadow-sm: 0 1px 3px 0 hsl(0 0% 0% / 0.28), 0 1px 2px -1px hsl(0 0% 0% / 0.24);
+    --shadow-card: 0 1px 3px 0 hsl(0 0% 0% / 0.28), 0 1px 2px -1px hsl(0 0% 0% / 0.22);
+    --shadow-card-hover: 0 8px 24px -8px hsl(0 0% 0% / 0.45), 0 2px 6px -2px hsl(0 0% 0% / 0.35);
   }
 }
 

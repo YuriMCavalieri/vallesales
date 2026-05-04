@@ -94,18 +94,18 @@ export const LeadDetailsSheet = ({ lead, open, onOpenChange, profiles, stages, o
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto p-0">
-        <div className="bg-gradient-header text-primary-foreground p-6">
+        <div className="bg-gradient-header text-header-foreground p-6">
           <SheetHeader className="space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <SheetTitle className="text-primary-foreground text-xl truncate">{lead.company_or_person}</SheetTitle>
-                {lead.contact_name && <SheetDescription className="text-primary-foreground/80">{lead.contact_name}</SheetDescription>}
+                <SheetTitle className="text-header-foreground text-xl truncate">{lead.company_or_person}</SheetTitle>
+                {lead.contact_name && <SheetDescription className="text-header-muted">{lead.contact_name}</SheetDescription>}
               </div>
               <div className="flex gap-1 shrink-0">
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-primary-foreground hover:bg-white/10" onClick={onEdit}>
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-header-foreground hover:bg-header-hover/10" onClick={onEdit}>
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-primary-foreground hover:bg-destructive/30" onClick={handleDelete}>
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-header-foreground hover:bg-destructive/30" onClick={handleDelete}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -113,7 +113,7 @@ export const LeadDetailsSheet = ({ lead, open, onOpenChange, profiles, stages, o
             <div className="flex flex-wrap gap-2">
               {stage && <Badge variant="secondary">{stage.name}</Badge>}
               <Badge variant="outline" className={`${tempColors[lead.temperature]} border`}>{tempLabel[lead.temperature]}</Badge>
-              {lead.has_been_contacted && <Badge variant="outline" className="bg-success/20 text-success-foreground border-success/30">Contatado</Badge>}
+              {lead.has_been_contacted && <Badge variant="outline" className="bg-success/20 text-success border-success/30">Contatado</Badge>}
             </div>
           </SheetHeader>
         </div>
