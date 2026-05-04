@@ -48,7 +48,7 @@ export const useMyRoles = () => {
 };
 
 export const usePermissions = () => {
-  const { data: roles = [] } = useMyRoles();
+  const { data: roles = [], isLoading } = useMyRoles();
   const has = (r: AppRole) => roles.includes(r);
   const isAdmin = has("admin");
   const isGestor = has("gestor");
@@ -57,6 +57,7 @@ export const usePermissions = () => {
 
   return {
     roles,
+    isLoading,
     isAdmin,
     isGestor,
     isConsultor,

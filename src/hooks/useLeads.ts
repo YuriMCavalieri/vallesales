@@ -39,9 +39,10 @@ export const useLeads = () => {
   });
 };
 
-export const useProfiles = () => {
+export const useProfiles = (enabled = true) => {
   return useQuery({
     queryKey: ["profiles"],
+    enabled,
     queryFn: async () => {
       const { data, error } = await supabase.from("profiles").select("*").order("full_name");
       if (error) throw error;

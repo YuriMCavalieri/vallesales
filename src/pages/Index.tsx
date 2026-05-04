@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useStages, useLeads, useProfiles } from "@/hooks/useLeads";
 import { usePermissions } from "@/hooks/useUserRoles";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
-import { PermissionGatedTeamLink } from "@/components/PermissionGatedTeamLink";
+import { AppHeader } from "@/components/AppHeader";
 import { LeadFormDialog } from "@/components/crm/LeadFormDialog";
 import { LeadDetailsSheet } from "@/components/crm/LeadDetailsSheet";
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
 import {
-  Building2, Plus, LogOut, Search, Loader2, Thermometer, DollarSign, TrendingUp,
-  Users, AlertTriangle, X, UserCheck, LayoutDashboard, Kanban, Zap,
+  Plus, Search, Loader2, Thermometer, DollarSign, TrendingUp,
+  Users, AlertTriangle, X, UserCheck, Zap,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Lead } from "@/types/crm";
@@ -26,7 +24,7 @@ import { needsActionToday } from "@/lib/priority";
 type StatusFilter = "todos" | "atrasados" | "sem_contato" | "follow_hoje" | "acao_hoje";
 
 const Index = () => {
-  const { signOut, user } = useAuth();
+  const { user } = useAuth();
   const stages = useStages();
   const leads = useLeads();
   const profiles = useProfiles();
@@ -139,42 +137,7 @@ const Index = () => {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      {/* Header */}
-      <header className="bg-gradient-header text-primary-foreground shadow-sm border-b border-primary/20">
-        <div className="px-4 md:px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="bg-accent rounded-lg p-2 shrink-0 shadow-sm">
-              <Building2 className="h-5 w-5 text-accent-foreground" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="font-bold text-base md:text-lg leading-tight truncate tracking-tight">Valle Consultores</h1>
-              <p className="text-[11px] text-primary-foreground/70 leading-tight truncate uppercase tracking-wider font-medium">CRM Comercial</p>
-            </div>
-          </div>
-          <nav className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
-            <Link to="/">
-              <Button variant="ghost" size="sm" className="bg-white/10 text-primary-foreground hover:bg-white/15 h-8">
-                <Kanban className="h-4 w-4 md:mr-1.5" />
-                <span className="hidden md:inline">Funil</span>
-              </Button>
-            </Link>
-            <Link to="/dashboard">
-              <Button variant="ghost" size="sm" className="text-primary-foreground/80 hover:bg-white/10 hover:text-primary-foreground h-8">
-                <LayoutDashboard className="h-4 w-4 md:mr-1.5" />
-                <span className="hidden md:inline">Dashboard</span>
-              </Button>
-            </Link>
-            <PermissionGatedTeamLink />
-          </nav>
-          <div className="flex items-center gap-2">
-            <span className="hidden md:block text-sm text-primary-foreground/80 truncate max-w-[200px]">{user?.email}</span>
-            <Button variant="ghost" size="sm" onClick={signOut} className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground">
-              <LogOut className="h-4 w-4 md:mr-1" />
-              <span className="hidden md:inline">Sair</span>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <AppHeader active="funil" />
 
       {/* Stats + actions */}
       <div className="px-4 md:px-6 py-5 border-b border-border bg-card">
