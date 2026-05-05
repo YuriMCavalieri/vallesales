@@ -5,20 +5,23 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLeads, useStages } from "@/hooks/useLeads";
+import { parseAdditionalContacts } from "@/lib/lead-form";
 import type { Lead } from "@/types/crm";
 import { Building2, Loader2, Mail, Phone, Search, Users, X } from "lucide-react";
 
 type ContactSituation = "open" | "lost" | "won";
 type SituationFilter = "all" | ContactSituation;
+type ContactKind = "primary" | "additional";
 
 type ContactRow = {
   id: string;
+  leadId: string;
   contactName: string;
   company: string;
   phone: string | null;
   email: string | null;
   situation: ContactSituation;
-  leadCount: number;
+  contactKind: ContactKind;
   updatedAt: string;
 };
 
@@ -34,23 +37,18 @@ const situationStyles: Record<ContactSituation, string> = {
   won: "bg-success/10 text-success border-success/25",
 };
 
+const contactKindLabels: Record<ContactKind, string> = {
+  primary: "Principal",
+  additional: "Adicional",
+};
+
+const contactKindStyles: Record<ContactKind, string> = {
+  primary: "bg-secondary text-secondary-foreground border-border/70",
+  additional: "bg-muted/60 text-muted-foreground border-border/70",
+};
+
 const normalizeText = (value?: string | null) => (value ?? "").trim().toLowerCase();
 const normalizePhone = (value?: string | null) => (value ?? "").replace(/\D/g, "");
-
-const getContactKey = (lead: Lead) => {
-  const emailKey = normalizeText(lead.email);
-  if (emailKey) return `email:${emailKey}`;
-
-  const phoneKey = normalizePhone(lead.phone);
-  if (phoneKey) return `phone:${phoneKey}`;
-
-  const nameKey = normalizeText(lead.contact_name);
-  const companyKey = normalizeText(lead.company_or_person);
-  if (nameKey && companyKey) return `name-company:${nameKey}|${companyKey}`;
-  if (nameKey) return `name:${nameKey}`;
-
-  return `lead:${lead.id}`;
-};
 
 const pickPreferred = (...values: Array<string | null | undefined>) =>
   values.find((value) => typeof value === "string" && value.trim()) ?? null;
@@ -58,14 +56,89 @@ const pickPreferred = (...values: Array<string | null | undefined>) =>
 const compareDatesDesc = (left?: string | null, right?: string | null) =>
   new Date(right ?? 0).getTime() - new Date(left ?? 0).getTime();
 
-const classifySituation = (leads: Lead[], wonStageId?: string, lostStageId?: string): ContactSituation => {
-  const hasOpen = leads.some((lead) => lead.stage_id !== wonStageId && lead.stage_id !== lostStageId);
-  if (hasOpen) return "open";
+const classifySituation = (lead: Lead, wonStageId?: string, lostStageId?: string): ContactSituation => {
+  if (lead.stage_id === wonStageId) return "won";
+  if (lead.stage_id === lostStageId) return "lost";
+  return "open";
+};
 
-  const hasWon = leads.some((lead) => lead.stage_id === wonStageId);
-  if (hasWon) return "won";
+const getContactIdentity = ({
+  name,
+  phone,
+  email,
+}: {
+  name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+}) => {
+  const emailKey = normalizeText(email);
+  if (emailKey) return `email:${emailKey}`;
 
-  return "lost";
+  const phoneKey = normalizePhone(phone);
+  if (phoneKey) return `phone:${phoneKey}`;
+
+  const nameKey = normalizeText(name);
+  if (nameKey) return `name:${nameKey}`;
+
+  return null;
+};
+
+const buildRowsForLead = (lead: Lead, wonStageId?: string, lostStageId?: string): ContactRow[] => {
+  const situation = classifySituation(lead, wonStageId, lostStageId);
+  const rows: ContactRow[] = [];
+  const seen = new Set<string>();
+
+  const registerSeen = (identity: string | null, fallbackId: string) => {
+    seen.add(identity ?? fallbackId);
+  };
+
+  const hasSeen = (identity: string | null, fallbackId: string) => seen.has(identity ?? fallbackId);
+
+  const primaryIdentity = getContactIdentity({
+    name: lead.contact_name,
+    phone: lead.phone,
+    email: lead.email,
+  });
+  const primaryFallback = `primary:${lead.id}`;
+
+  rows.push({
+    id: `${lead.id}:primary`,
+    leadId: lead.id,
+    contactName: pickPreferred(lead.contact_name, lead.company_or_person, "Sem nome") as string,
+    company: pickPreferred(lead.company_or_person, "Sem empresa") as string,
+    phone: lead.phone,
+    email: lead.email,
+    situation,
+    contactKind: "primary",
+    updatedAt: lead.updated_at ?? lead.created_at,
+  });
+  registerSeen(primaryIdentity, primaryFallback);
+
+  parseAdditionalContacts(lead.additional_contacts).forEach((contact, index) => {
+    const identity = getContactIdentity({
+      name: contact.name,
+      phone: contact.phone,
+      email: contact.email,
+    });
+    const fallbackId = `additional:${lead.id}:${index}`;
+    const hasAnyData = Boolean(contact.name.trim() || contact.phone.trim() || contact.email.trim());
+    if (!hasAnyData || hasSeen(identity, fallbackId)) return;
+
+    rows.push({
+      id: `${lead.id}:additional:${contact.id || index}`,
+      leadId: lead.id,
+      contactName: pickPreferred(contact.name, lead.company_or_person, "Sem nome") as string,
+      company: pickPreferred(lead.company_or_person, "Sem empresa") as string,
+      phone: contact.phone || null,
+      email: contact.email || null,
+      situation,
+      contactKind: "additional",
+      updatedAt: lead.updated_at ?? lead.created_at,
+    });
+    registerSeen(identity, fallbackId);
+  });
+
+  return rows;
 };
 
 const Contacts = () => {
@@ -77,42 +150,15 @@ const Contacts = () => {
   const rows = useMemo(() => {
     const wonStageId = stages.data?.find((stage) => stage.is_won)?.id;
     const lostStageId = stages.data?.find((stage) => stage.is_lost)?.id;
-    const grouped = new Map<string, Lead[]>();
 
-    (leads.data ?? []).forEach((lead) => {
-      const key = getContactKey(lead);
-      const current = grouped.get(key) ?? [];
-      current.push(lead);
-      grouped.set(key, current);
-    });
-
-    return Array.from(grouped.entries())
-      .map(([key, contactLeads]) => {
-        const ordered = [...contactLeads].sort((left, right) =>
-          compareDatesDesc(left.updated_at, right.updated_at) || compareDatesDesc(left.created_at, right.created_at)
-        );
-        const latest = ordered[0];
-
-        return {
-          id: key,
-          contactName: pickPreferred(
-            ...ordered.map((lead) => lead.contact_name),
-            latest.company_or_person,
-            "Sem nome"
-          ) as string,
-          company: pickPreferred(...ordered.map((lead) => lead.company_or_person), "Sem empresa") as string,
-          phone: pickPreferred(...ordered.map((lead) => lead.phone)),
-          email: pickPreferred(...ordered.map((lead) => lead.email)),
-          situation: classifySituation(contactLeads, wonStageId, lostStageId),
-          leadCount: contactLeads.length,
-          updatedAt: latest.updated_at ?? latest.created_at,
-        } satisfies ContactRow;
-      })
+    return (leads.data ?? [])
+      .flatMap((lead) => buildRowsForLead(lead, wonStageId, lostStageId))
       .sort((left, right) => compareDatesDesc(left.updatedAt, right.updatedAt));
   }, [leads.data, stages.data]);
 
   const filteredRows = useMemo(() => {
     const query = normalizeText(search);
+
     return rows.filter((row) => {
       if (situationFilter !== "all" && row.situation !== situationFilter) return false;
 
@@ -123,6 +169,7 @@ const Contacts = () => {
         row.phone,
         row.email,
         situationLabels[row.situation],
+        contactKindLabels[row.contactKind],
       ]
         .filter(Boolean)
         .join(" ")
@@ -147,7 +194,7 @@ const Contacts = () => {
               Contatos
             </h2>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Lista consolidada dos contatos ja relacionados aos negocios do funil.
+              Lista consolidada dos contatos principais e adicionais vinculados aos negocios do funil.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -233,6 +280,7 @@ const Contacts = () => {
                 <thead className="border-b bg-muted/40">
                   <tr className="text-left">
                     <th className="px-4 py-3 font-medium text-muted-foreground">Nome</th>
+                    <th className="px-4 py-3 font-medium text-muted-foreground">Tipo</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">Empresa</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">Telefone</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">E-mail</th>
@@ -245,10 +293,13 @@ const Contacts = () => {
                       <td className="px-4 py-3">
                         <div className="min-w-0">
                           <p className="truncate font-medium text-foreground">{row.contactName}</p>
-                          {row.leadCount > 1 && (
-                            <p className="text-xs text-muted-foreground">{row.leadCount} negocios relacionados</p>
-                          )}
+                          <p className="text-xs text-muted-foreground">Lead vinculado: {row.leadId.slice(0, 8)}</p>
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className={contactKindStyles[row.contactKind]}>
+                          {contactKindLabels[row.contactKind]}
+                        </Badge>
                       </td>
                       <td className="px-4 py-3 text-foreground">{row.company}</td>
                       <td className="px-4 py-3 text-muted-foreground">
