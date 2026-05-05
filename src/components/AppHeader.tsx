@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
-import { Building2, Kanban, LayoutDashboard, LogOut, Settings } from "lucide-react";
+import { ContactRound, Building2, Kanban, LayoutDashboard, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
-type AppHeaderSection = "funil" | "dashboard" | "configuracoes";
+type AppHeaderSection = "funil" | "contatos" | "dashboard" | "configuracoes";
 
 export const AppHeader = ({ active }: { active: AppHeaderSection }) => {
   const { signOut, user } = useAuth();
@@ -35,6 +35,12 @@ export const AppHeader = ({ active }: { active: AppHeaderSection }) => {
             <Button variant="ghost" size="sm" className={navClass("funil")}>
               <Kanban className="h-4 w-4 md:mr-1.5" />
               <span className="hidden md:inline">Funil</span>
+            </Button>
+          </Link>
+          <Link to="/contatos">
+            <Button variant="ghost" size="sm" className={navClass("contatos")}>
+              <ContactRound className="h-4 w-4 md:mr-1.5" />
+              <span className="hidden md:inline">Contatos</span>
             </Button>
           </Link>
           <Link to="/dashboard">
