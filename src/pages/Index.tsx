@@ -23,6 +23,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
@@ -63,7 +64,6 @@ const Index = () => {
     activeFunnel,
     activeFunnelId,
     funnelOptions,
-    funnels,
     loading: funnelLoading,
     setActiveFunnelId,
   } = useActiveFunnel();
@@ -150,6 +150,14 @@ const Index = () => {
     () => [...funnelOptions].sort((left, right) => Number(right.is_default) - Number(left.is_default) || left.name.localeCompare(right.name)),
     [funnelOptions],
   );
+  const accessibleFunnels = useMemo(
+    () => sortedFunnels.filter((funnel) => funnel.has_access),
+    [sortedFunnels],
+  );
+  const blockedFunnels = useMemo(
+    () => sortedFunnels.filter((funnel) => !funnel.has_access),
+    [sortedFunnels],
+  );
 
   const openNew = (stageId?: string) => {
     setEditLead(null);
@@ -211,84 +219,136 @@ const Index = () => {
       <AppHeader active="funil" />
 
       <div className="px-4 py-5 border-b border-border bg-card md:px-6">
-        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">Funil comercial</h2>
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-2">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
+              Funil comercial
+            </p>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "group inline-flex w-fit max-w-full items-center gap-3 rounded-xl border border-border/60 bg-background/70 px-4 py-2.5 text-left shadow-xs transition-all duration-200",
+                    "hover:-translate-y-0.5 hover:border-accent/30 hover:bg-accent/[0.04] hover:shadow-card",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2",
+                    "disabled:pointer-events-none disabled:opacity-60",
+                  )}
+                  disabled={funnelLoading || funnelOptions.length === 0}
+                  aria-label="Selecionar negocio ou funil ativo"
+                >
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground/75">
+                      Negocio / funil ativo
+                    </span>
+                    <span className="truncate text-lg font-semibold tracking-[-0.02em] text-foreground md:text-[1.75rem]">
+                      {funnelLoading ? "Carregando funis..." : `Funil ${activeFunnel?.name ?? "disponivel"}`}
+                    </span>
+                  </span>
+                  <span className="rounded-full bg-accent/8 p-1.5 text-accent/90 transition-colors group-hover:bg-accent/12">
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[min(92vw,24rem)] p-2">
+                <DropdownMenuLabel className="px-2 pb-1">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Funil selecionado
+                    </span>
+                    <span className="truncate text-sm font-semibold text-foreground">
+                      {activeFunnel?.name ?? "Nenhum funil ativo"}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuRadioGroup value={activeFunnelId ?? ""} onValueChange={setActiveFunnelId}>
+                    {accessibleFunnels.map((funnel) => (
+                      <DropdownMenuRadioItem key={funnel.id} value={funnel.id} className="gap-3 rounded-md py-2 pr-3">
+                        <Building2 className="h-4 w-4 shrink-0 text-accent" />
+                        <span className="truncate">{funnel.name}</span>
+                        {funnel.is_default && (
+                          <Badge variant="secondary" className="ml-auto">
+                            Principal
+                          </Badge>
+                        )}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuGroup>
+
+                {blockedFunnels.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <div className="px-2 py-1">
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        Sem permissao
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      {blockedFunnels.map((funnel) => (
+                        <Tooltip key={funnel.id}>
+                          <TooltipTrigger asChild>
+                            <div
+                              aria-disabled="true"
+                              className="flex items-center gap-3 rounded-md px-2 py-2 text-sm opacity-55"
+                            >
+                              <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <span className="truncate">{funnel.name}</span>
+                              {funnel.is_default && (
+                                <Badge variant="secondary" className="ml-auto">
+                                  Principal
+                                </Badge>
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Voce nao tem acesso a esse funil.
+                          </TooltipContent>
+                        </Tooltip>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {perms.isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="gap-3 rounded-md py-2 font-medium text-accent focus:text-accent"
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        setFunnelDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Adicionar novo funil
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <p className="mt-0.5 text-sm text-muted-foreground">
               {activeFunnel ? `Acompanhe e gerencie os leads de ${activeFunnel.name}` : "Acompanhe e gerencie seus leads em tempo real"}
             </p>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {perms.canCreateLead && (
+            <div className="flex shrink-0 md:pt-7">
               <Button
-                variant="outline"
+                onClick={() => openNew()}
+                variant="accent"
                 size="lg"
-                className="min-w-[240px] shrink-0 justify-between gap-3 font-semibold"
-                disabled={funnelLoading || funnels.length === 0}
+                className="w-full font-semibold shadow-card md:w-auto"
+                title="Novo lead (atalho: N)"
               >
-                <span className="flex min-w-0 items-center gap-2">
-                  <Building2 className="h-4 w-4 shrink-0 text-accent" />
-                  <span className="truncate">
-                    {funnelLoading ? "Carregando funis..." : activeFunnel?.name ?? "Selecione um funil"}
-                  </span>
-                </span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Plus className="mr-1 h-4 w-4" /> Novo lead
+                <kbd className="ml-2 hidden rounded bg-black/15 px-1.5 py-0.5 font-mono text-[10px] md:inline-flex">N</kbd>
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72">
-              <DropdownMenuLabel>Negocio / Funil ativo</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuRadioGroup value={activeFunnelId ?? ""} onValueChange={setActiveFunnelId}>
-                {sortedFunnels.map((funnel) => (
-                  funnel.has_access ? (
-                    <DropdownMenuRadioItem key={funnel.id} value={funnel.id} className="gap-2 pr-3">
-                      <span className="truncate">{funnel.name}</span>
-                      {funnel.is_default && (
-                        <Badge variant="secondary" className="ml-auto">
-                          Principal
-                        </Badge>
-                      )}
-                    </DropdownMenuRadioItem>
-                  ) : (
-                    <Tooltip key={funnel.id}>
-                      <TooltipTrigger asChild>
-                        <div
-                          aria-disabled="true"
-                          className="flex cursor-not-allowed items-center gap-2 rounded-sm px-2 py-1.5 text-sm opacity-50"
-                        >
-                          <Lock className="h-3.5 w-3.5 shrink-0" />
-                          <span className="truncate">{funnel.name}</span>
-                          {funnel.is_default && (
-                            <Badge variant="secondary" className="ml-auto">
-                              Principal
-                            </Badge>
-                          )}
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        Voce nao tem acesso a esse funil.
-                      </TooltipContent>
-                    </Tooltip>
-                  )
-                ))}
-              </DropdownMenuRadioGroup>
-              {perms.isAdmin && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onSelect={(event) => {
-                      event.preventDefault();
-                      setFunnelDialogOpen(true);
-                    }}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar funil
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </div>
+          )}
         </div>
 
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -417,21 +477,6 @@ const Index = () => {
 
       <main className="flex-1 overflow-hidden px-4 py-4 md:px-6">
         <div className="flex h-full flex-col gap-4">
-          {perms.canCreateLead && (
-            <div className="flex justify-start">
-              <Button
-                onClick={() => openNew()}
-                variant="accent"
-                size="lg"
-                className="font-semibold shadow-card"
-                title="Novo lead (atalho: N)"
-              >
-                <Plus className="mr-1 h-4 w-4" /> Novo lead
-                <kbd className="ml-2 hidden rounded bg-black/15 px-1.5 py-0.5 font-mono text-[10px] md:inline-flex">N</kbd>
-              </Button>
-            </div>
-          )}
-
           <div className="min-h-0 flex-1">
             {loading ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -526,7 +571,7 @@ const Index = () => {
                 id="new-funnel-name"
                 value={newFunnelName}
                 onChange={(event) => setNewFunnelName(event.target.value)}
-                placeholder="Ex.: Valle BPO"
+                placeholder="Ex.: Valle Consultores"
                 maxLength={120}
                 autoFocus
               />
