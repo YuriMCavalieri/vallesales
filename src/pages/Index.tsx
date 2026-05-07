@@ -224,32 +224,33 @@ const Index = () => {
             <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
               Funil comercial
             </p>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className={cn(
-                    "group inline-flex w-fit max-w-full items-center gap-3 rounded-xl border border-border/60 bg-background/70 px-4 py-2.5 text-left shadow-xs transition-all duration-200",
-                    "hover:-translate-y-0.5 hover:border-accent/30 hover:bg-accent/[0.04] hover:shadow-card",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2",
-                    "disabled:pointer-events-none disabled:opacity-60",
-                  )}
-                  disabled={funnelLoading || funnelOptions.length === 0}
-                  aria-label="Selecionar negocio ou funil ativo"
-                >
-                  <span className="flex min-w-0 flex-col">
-                    <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground/75">
-                      Negocio / funil ativo
-                    </span>
-                    <span className="truncate text-lg font-semibold tracking-[-0.02em] text-foreground md:text-[1.75rem]">
-                      {funnelLoading ? "Carregando funis..." : `Funil ${activeFunnel?.name ?? "disponivel"}`}
-                    </span>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <div className="min-w-0">
+                <h2 className="text-xl tracking-[-0.02em] text-black md:text-[1.9rem]">
+                  <span className="font-semibold">Funil </span>
+                  <span className="font-bold text-accent">
+                    {funnelLoading ? "Carregando..." : activeFunnel?.name ?? "disponivel"}
                   </span>
-                  <span className="rounded-full bg-accent/8 p-1.5 text-accent/90 transition-colors group-hover:bg-accent/12">
+                </h2>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "group h-9 w-fit rounded-full border-[#e8dccf] bg-[#fbf5ef] px-4 text-[#6c5843] shadow-none hover:border-[#ddc9b4] hover:bg-[#f7ede3] hover:text-[#5b4a38]",
+                      "focus-visible:ring-accent/30",
+                    )}
+                    disabled={funnelLoading || funnelOptions.length === 0}
+                    aria-label="Trocar funil"
+                  >
+                    Trocar funil
                     <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                  </span>
-                </button>
-              </DropdownMenuTrigger>
+                  </Button>
+                </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-[min(92vw,24rem)] p-2">
                 <DropdownMenuLabel className="px-2 pb-1">
                   <div className="flex flex-col gap-1">
@@ -328,7 +329,8 @@ const Index = () => {
                   </>
                 )}
               </DropdownMenuContent>
-            </DropdownMenu>
+              </DropdownMenu>
+            </div>
 
             <p className="mt-0.5 text-sm text-muted-foreground">
               {activeFunnel ? `Acompanhe e gerencie os leads de ${activeFunnel.name}` : "Acompanhe e gerencie seus leads em tempo real"}
@@ -535,6 +537,7 @@ const Index = () => {
         lead={selectedLead}
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
+        onLeadChange={setSelectedLead}
         profiles={profiles.data ?? []}
         stages={stages.data ?? []}
         canEditLead={selectedLead ? canEditLead(selectedLead) : false}

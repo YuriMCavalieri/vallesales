@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +52,7 @@ interface Props {
   canEditLead: boolean;
   canDeleteLead: boolean;
   onEdit: () => void;
+  onLeadChange?: (lead: Lead) => void;
 }
 
 const tempColors: Record<string, string> = {
@@ -85,10 +86,12 @@ export const LeadDetailsSheet = ({
   canEditLead,
   canDeleteLead,
   onEdit,
+  onLeadChange,
 }: Props) => {
   const [newNote, setNewNote] = useState("");
   const [contactMethod, setContactMethod] = useState("whatsapp");
   const [contactDesc, setContactDesc] = useState("");
+  const [selectedOwnerId, setSelectedOwnerId] = useState<string>("__none__");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const activities = useLeadActivities(lead?.id ?? null);
@@ -98,10 +101,14 @@ export const LeadDetailsSheet = ({
   const logContact = useLogContact(lead?.id ?? "");
   const upload = useUploadAttachment(lead?.id ?? "");
   const del = useDeleteLead();
-  const updateLead = useUpdateLead();
+  const updateLead = useUpdateLead({ errorMessage: "Nao foi possivel alterar o responsavel." });
   const { data: assignableProfiles = [] } = useAssignableProfiles(lead?.funnel_id, !!lead?.funnel_id);
   const { funnels } = useActiveFunnel();
   const { user } = useAuth();
+
+  useEffect(() => {
+    setSelectedOwnerId(lead?.owner_id || "__none__");
+  }, [lead?.id, lead?.owner_id]);
 
   if (!lead) return null;
 
@@ -109,7 +116,9 @@ export const LeadDetailsSheet = ({
   const funnel = funnels.find((item) => item.id === lead.funnel_id);
   const additionalContacts = parseAdditionalContacts(lead.additional_contacts);
   const assignableIds = new Set(assignableProfiles.map((profile) => profile.id));
-  const ownerOptions = profiles.filter((profile) => assignableIds.has(profile.id) || profile.id === lead.owner_id);
+  const ownerOptions = profiles.filter(
+    (profile) => assignableIds.has(profile.id) || profile.id === lead.owner_id,
+  );
 
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
@@ -133,6 +142,21 @@ export const LeadDetailsSheet = ({
     if (!confirm("Excluir este lead permanentemente?")) return;
     await del.mutateAsync(lead.id);
     onOpenChange(false);
+  };
+
+  const handleOwnerChange = async (value: string) => {
+    const nextOwnerId = value === "__none__" ? null : value;
+    const previousOwnerId = selectedOwnerId;
+
+    setSelectedOwnerId(value);
+
+    try {
+      const updatedLead = await updateLead.mutateAsync({ id: lead.id, owner_id: nextOwnerId });
+      setSelectedOwnerId(updatedLead.owner_id || "__none__");
+      onLeadChange?.(updatedLead);
+    } catch {
+      setSelectedOwnerId(previousOwnerId);
+    }
   };
 
   return (
@@ -205,10 +229,8 @@ export const LeadDetailsSheet = ({
                 Responsavel
               </p>
               <Select
-                value={lead.owner_id || "__none__"}
-                onValueChange={(value) =>
-                  updateLead.mutate({ id: lead.id, owner_id: value === "__none__" ? null : value })
-                }
+                value={selectedOwnerId}
+                onValueChange={handleOwnerChange}
                 disabled={updateLead.isPending || !canEditLead}
               >
                 <SelectTrigger className="h-9">

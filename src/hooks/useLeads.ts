@@ -92,19 +92,23 @@ export const useCreateLead = () => {
   });
 };
 
-export const useUpdateLead = () => {
+export const useUpdateLead = (options?: { errorMessage?: string }) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: LeadUpdate & { id: string }) => {
       const data = await invokeLeadsApi<{ lead: Lead }>({ action: "update", id, updates });
       return data.lead;
     },
-    onSuccess: (_d, vars) => {
+    onSuccess: (updatedLead, vars) => {
+      qc.setQueriesData<Lead[]>({ queryKey: ["leads"] }, (current) =>
+        current ? current.map((lead) => (lead.id === updatedLead.id ? updatedLead : lead)) : current,
+      );
+      qc.setQueryData<Lead>(["lead", vars.id], updatedLead);
       qc.invalidateQueries({ queryKey: ["leads"] });
       qc.invalidateQueries({ queryKey: ["lead", vars.id] });
       qc.invalidateQueries({ queryKey: ["lead_activities", vars.id] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(options?.errorMessage ?? e.message),
   });
 };
 
@@ -239,18 +243,34 @@ export const useUploadAttachment = (leadId: string) => {
       const path = `${leadId}/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("lead-attachments").upload(path, file);
-      if (upErr) throw upErr;
+      if (upErr) {
+        if (/row-level security|violates row level security/i.test(upErr.message)) {
+          throw new Error("Nao foi possivel enviar o anexo por falta de permissao neste lead.");
+        }
+        throw upErr;
+      }
+
       const { error } = await supabase.from("lead_attachments").insert({
         lead_id: leadId, file_name: file.name, file_path: path,
         file_size: file.size, mime_type: file.type,
         created_by: user?.id, updated_by: user?.id,
       });
-      if (error) throw error;
-      await supabase.from("lead_activities").insert({
+      if (error) {
+        await supabase.storage.from("lead-attachments").remove([path]);
+        if (/row-level security|violates row level security/i.test(error.message)) {
+          throw new Error("Nao foi possivel enviar o anexo por falta de permissao neste lead.");
+        }
+        throw error;
+      }
+
+      const { error: activityError } = await supabase.from("lead_activities").insert({
         lead_id: leadId, type: "attachment_added",
         description: `Anexo enviado: ${file.name}`,
         created_by: user?.id, updated_by: user?.id,
       });
+      if (activityError) {
+        console.warn("Nao foi possivel registrar a atividade do anexo.", activityError);
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["lead_attachments", leadId] });

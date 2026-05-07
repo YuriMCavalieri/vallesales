@@ -160,7 +160,9 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
   const loading = create.isPending || update.isPending;
   const isEdit = !!lead;
   const assignableIds = new Set(assignableProfiles.map((profile) => profile.id));
-  const ownerOptions = profiles.filter((profile) => assignableIds.has(profile.id) || profile.id === form.owner_id);
+  const ownerOptions = profiles.filter(
+    (profile) => assignableIds.has(profile.id) || profile.id === form.owner_id,
+  );
 
   const patchForm = (patch: Partial<FormState>) => setForm((current) => ({ ...current, ...patch }));
 
