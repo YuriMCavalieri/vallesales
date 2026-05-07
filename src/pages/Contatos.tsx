@@ -1,19 +1,22 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLeads, useStages } from "@/hooks/useLeads";
 import { useActiveFunnel } from "@/hooks/useActiveFunnel";
 import { parseAdditionalContacts } from "@/lib/lead-form";
+import { cn } from "@/lib/utils";
 import type { Lead } from "@/types/crm";
-import { Building2, Loader2, Mail, Phone, Search, Users, X } from "lucide-react";
+import { Building2, Check, ChevronDown, Loader2, Mail, Phone, Search, Users, X } from "lucide-react";
 
 type ContactSituation = "open" | "lost" | "won";
 type SituationFilter = "all" | ContactSituation;
 type ContactKind = "primary" | "additional";
-type FunnelView = "active" | "all";
 
 type ContactRow = {
   id: string;
@@ -53,6 +56,7 @@ const contactKindStyles: Record<ContactKind, string> = {
 
 const normalizeText = (value?: string | null) => (value ?? "").trim().toLowerCase();
 const normalizePhone = (value?: string | null) => (value ?? "").replace(/\D/g, "");
+const ALL_FUNNELS_VALUE = "__all_funnels__";
 
 const pickPreferred = (...values: Array<string | null | undefined>) =>
   values.find((value) => typeof value === "string" && value.trim()) ?? null;
@@ -155,13 +159,78 @@ const buildRowsForLead = (
 };
 
 const Contacts = () => {
-  const { activeFunnel, activeFunnelId, funnels, loading: funnelLoading } = useActiveFunnel();
+  const { activeFunnelId, funnels, loading: funnelLoading } = useActiveFunnel();
   const [search, setSearch] = useState("");
   const [situationFilter, setSituationFilter] = useState<SituationFilter>("all");
-  const [funnelView, setFunnelView] = useState<FunnelView>("active");
-  const scopedFunnelId = funnelView === "all" ? null : activeFunnelId;
-  const leads = useLeads(scopedFunnelId, funnelView === "all" || !!activeFunnelId);
-  const stages = useStages(scopedFunnelId, funnelView === "all" || !!activeFunnelId);
+  const [selectedFunnelIds, setSelectedFunnelIds] = useState<string[]>([]);
+  const [funnelFilterOpen, setFunnelFilterOpen] = useState(false);
+  const accessibleFunnelIds = useMemo(() => funnels.map((funnel) => funnel.id), [funnels]);
+  const hasAvailableFunnels = accessibleFunnelIds.length > 0;
+  const leads = useLeads(null, hasAvailableFunnels);
+  const stages = useStages(undefined, hasAvailableFunnels);
+
+  useEffect(() => {
+    if (accessibleFunnelIds.length === 0) {
+      setSelectedFunnelIds([]);
+      return;
+    }
+
+    setSelectedFunnelIds((current) => {
+      const validCurrent = current.filter((id) => accessibleFunnelIds.includes(id));
+      if (validCurrent.length > 0) return validCurrent;
+      if (activeFunnelId && accessibleFunnelIds.includes(activeFunnelId)) return [activeFunnelId];
+      return [...accessibleFunnelIds];
+    });
+  }, [accessibleFunnelIds, activeFunnelId]);
+
+  const allFunnelsSelected = hasAvailableFunnels && selectedFunnelIds.length === accessibleFunnelIds.length;
+  const selectedFunnels = useMemo(
+    () => funnels.filter((funnel) => selectedFunnelIds.includes(funnel.id)),
+    [funnels, selectedFunnelIds],
+  );
+
+  const toggleFunnel = (funnelId: string) => {
+    setSelectedFunnelIds((current) => {
+      if (current.includes(funnelId)) {
+        const next = current.filter((id) => id !== funnelId);
+        return next.length === 0 ? current : next;
+      }
+
+      return [...current, funnelId];
+    });
+  };
+
+  const handleFunnelSelection = (value: string) => {
+    if (value === ALL_FUNNELS_VALUE) {
+      setSelectedFunnelIds([...accessibleFunnelIds]);
+      return;
+    }
+
+    toggleFunnel(value);
+  };
+
+  const funnelFilterLabel = useMemo(() => {
+    if (!hasAvailableFunnels) return "Nenhum funil";
+    if (allFunnelsSelected) return "Todos os funis";
+    if (selectedFunnels.length === 1) return selectedFunnels[0]?.name ?? "1 funil";
+    return `${selectedFunnels.length} funis selecionados`;
+  }, [allFunnelsSelected, hasAvailableFunnels, selectedFunnels]);
+
+  const funnelDescription = useMemo(() => {
+    if (!hasAvailableFunnels) {
+      return "Lista consolidada dos contatos dos negocios.";
+    }
+
+    if (allFunnelsSelected) {
+      return "Contatos de todos os funis aos quais voce tem acesso.";
+    }
+
+    if (selectedFunnels.length === 1) {
+      return `Contatos vinculados ao negocio ${selectedFunnels[0]?.name}.`;
+    }
+
+    return `Contatos vinculados a ${selectedFunnels.length} funis selecionados.`;
+  }, [allFunnelsSelected, hasAvailableFunnels, selectedFunnels]);
 
   const rows = useMemo(() => {
     const funnelsById = new Map(funnels.map((funnel) => [funnel.id, funnel.name]));
@@ -188,10 +257,19 @@ const Contacts = () => {
       .sort((left, right) => compareDatesDesc(left.updatedAt, right.updatedAt));
   }, [funnels, leads.data, stages.data]);
 
+  const scopedRows = useMemo(() => {
+    const allowedFunnels = new Set(selectedFunnelIds);
+
+    return rows.filter((row) => {
+      if (allowedFunnels.size > 0 && !allowedFunnels.has(row.funnelId)) return false;
+      return true;
+    });
+  }, [rows, selectedFunnelIds]);
+
   const filteredRows = useMemo(() => {
     const query = normalizeText(search);
 
-    return rows.filter((row) => {
+    return scopedRows.filter((row) => {
       if (situationFilter !== "all" && row.situation !== situationFilter) return false;
 
       if (!query) return true;
@@ -210,11 +288,11 @@ const Contacts = () => {
 
       return haystack.includes(query);
     });
-  }, [rows, search, situationFilter]);
+  }, [scopedRows, search, situationFilter]);
 
   const loading = funnelLoading || leads.isLoading || stages.isLoading;
   const error = (leads.error as Error | null) ?? (stages.error as Error | null);
-  const hasActiveFilters = !!search.trim() || situationFilter !== "all" || funnelView !== "active";
+  const hasActiveFilters = !!search.trim() || situationFilter !== "all" || !allFunnelsSelected;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -227,19 +305,19 @@ const Contacts = () => {
               Contatos
             </h2>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              {activeFunnel ? `Contatos vinculados ao negocio ${activeFunnel.name}.` : "Lista consolidada dos contatos dos negocios."}
+              {funnelDescription}
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <StatCard label="Total" value={String(rows.length)} icon={<Users className="h-4 w-4" />} />
+            <StatCard label="Total" value={String(scopedRows.length)} icon={<Users className="h-4 w-4" />} />
             <StatCard
               label="Em aberto"
-              value={String(rows.filter((row) => row.situation === "open").length)}
+              value={String(scopedRows.filter((row) => row.situation === "open").length)}
               icon={<Building2 className="h-4 w-4" />}
             />
             <StatCard
               label="Clientes"
-              value={String(rows.filter((row) => row.situation === "won").length)}
+              value={String(scopedRows.filter((row) => row.situation === "won").length)}
               icon={<Mail className="h-4 w-4" />}
             />
           </div>
@@ -266,17 +344,63 @@ const Contacts = () => {
             )}
           </div>
 
-          <Select value={funnelView} onValueChange={(value) => setFunnelView(value as FunnelView)}>
-            <SelectTrigger className="h-9 bg-background md:w-56">
-              <SelectValue placeholder="Funil" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">
-                {activeFunnel ? `Somente ${activeFunnel.name}` : "Funil ativo"}
-              </SelectItem>
-              <SelectItem value="all">Todos os funis</SelectItem>
-            </SelectContent>
-          </Select>
+          <Popover open={funnelFilterOpen} onOpenChange={setFunnelFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 justify-between bg-background font-normal md:w-64"
+                disabled={!hasAvailableFunnels}
+              >
+                <span className="truncate text-left">{funnelFilterLabel}</span>
+                <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-2" align="end">
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => handleFunnelSelection(ALL_FUNNELS_VALUE)}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-muted/60",
+                    allFunnelsSelected && "bg-muted/60",
+                  )}
+                >
+                  <Checkbox checked={allFunnelsSelected} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground">Todos os funis</p>
+                    <p className="text-xs text-muted-foreground">
+                      {accessibleFunnelIds.length === 1
+                        ? "Equivale ao unico funil disponivel."
+                        : `Inclui os ${accessibleFunnelIds.length} funis disponiveis para voce.`}
+                    </p>
+                  </div>
+                </button>
+
+                <div className="my-2 h-px bg-border" />
+
+                {funnels.map((funnel) => {
+                  const checked = selectedFunnelIds.includes(funnel.id);
+
+                  return (
+                    <button
+                      key={funnel.id}
+                      type="button"
+                      onClick={() => handleFunnelSelection(funnel.id)}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-muted/60",
+                        checked && "bg-muted/60",
+                      )}
+                    >
+                      <Checkbox checked={checked} />
+                      <span className="min-w-0 flex-1 truncate text-foreground">{funnel.name}</span>
+                      {checked && <Check className="h-4 w-4 text-accent" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           <Select value={situationFilter} onValueChange={(value) => setSituationFilter(value as SituationFilter)}>
             <SelectTrigger className="h-9 bg-background md:w-52">
@@ -303,7 +427,7 @@ const Contacts = () => {
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-accent" />
           </div>
-        ) : !activeFunnelId && funnelView === "active" ? (
+        ) : !hasAvailableFunnels ? (
           <Card className="mx-auto max-w-2xl p-8 text-center">
             <h3 className="text-lg font-semibold text-foreground">Nenhum funil disponivel</h3>
             <p className="mt-2 text-sm text-muted-foreground">
