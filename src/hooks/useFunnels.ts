@@ -80,3 +80,25 @@ export const useRenameFunnel = () => {
     onError: (error: Error) => toast.error(error.message),
   });
 };
+
+export const useDeleteFunnel = () => {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (funnelId: string) => {
+      const { data, error } = await supabase.rpc("delete_funnel", {
+        _funnel_id: funnelId,
+      });
+      if (error) throw error;
+      return data as boolean;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["funnels"] });
+      qc.invalidateQueries({ queryKey: ["funnel_access_options"] });
+      qc.invalidateQueries({ queryKey: ["pipeline_stages"] });
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      toast.success("Funil excluido");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+};

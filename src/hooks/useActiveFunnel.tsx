@@ -47,6 +47,7 @@ export const ActiveFunnelProvider = ({ children }: { children: ReactNode }) => {
 
     if (funnelQueryStillLoading(authLoading, funnelOptionsQuery.isLoading)) return;
     if (funnels.length === 0) {
+      window.localStorage.removeItem(STORAGE_KEY);
       setActiveFunnelIdState(null);
       return;
     }
@@ -58,6 +59,7 @@ export const ActiveFunnelProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const next = funnels.find((funnel) => funnel.is_default) ?? funnels[0];
+    window.localStorage.removeItem(STORAGE_KEY);
     setActiveFunnelIdState(next.id);
     window.localStorage.setItem(STORAGE_KEY, next.id);
   }, [activeFunnelId, authLoading, funnelOptionsQuery.isLoading, funnels, user]);
@@ -79,15 +81,22 @@ export const ActiveFunnelProvider = ({ children }: { children: ReactNode }) => {
     () => funnels.find((funnel) => funnel.id === activeFunnelId) ?? null,
     [activeFunnelId, funnels],
   );
+  const resolvedActiveFunnelId = activeFunnel?.id ?? null;
+  const selectionLoading =
+    !!user &&
+    !authLoading &&
+    !funnelOptionsQuery.isLoading &&
+    funnels.length > 0 &&
+    !activeFunnel;
 
   return (
     <ActiveFunnelContext.Provider
       value={{
         funnels,
         funnelOptions,
-        activeFunnelId,
+        activeFunnelId: resolvedActiveFunnelId,
         activeFunnel,
-        loading: authLoading || funnelOptionsQuery.isLoading,
+        loading: authLoading || funnelOptionsQuery.isLoading || selectionLoading,
         hasMultipleFunnels: funnels.length > 1,
         setActiveFunnelId,
       }}

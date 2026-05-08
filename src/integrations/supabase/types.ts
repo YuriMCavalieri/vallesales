@@ -473,6 +473,12 @@ export type Database = {
           updated_at: string
         }
       }
+      delete_funnel: {
+        Args: {
+          _funnel_id: string
+        }
+        Returns: boolean
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]

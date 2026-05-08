@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useStages, useLeads, useProfiles } from "@/hooks/useLeads";
 import { usePermissions } from "@/hooks/useUserRoles";
 import { useActiveFunnel } from "@/hooks/useActiveFunnel";
-import { useCreateFunnel, useRenameFunnel } from "@/hooks/useFunnels";
+import { useCreateFunnel, useDeleteFunnel, useRenameFunnel } from "@/hooks/useFunnels";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
 import { AppHeader } from "@/components/AppHeader";
 import { LeadFormDialog } from "@/components/crm/LeadFormDialog";
@@ -20,6 +20,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,9 +57,10 @@ import {
   Check,
   Lock,
   Pencil,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { Lead } from "@/types/crm";
+import { Funnel, Lead } from "@/types/crm";
 import { formatCurrency } from "@/lib/constants";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -68,11 +79,13 @@ const Index = () => {
     setActiveFunnelId,
   } = useActiveFunnel();
   const createFunnel = useCreateFunnel();
+  const deleteFunnel = useDeleteFunnel();
   const renameFunnel = useRenameFunnel();
-  const stages = useStages(activeFunnelId, !!activeFunnelId);
-  const leads = useLeads(activeFunnelId, !!activeFunnelId);
   const profiles = useProfiles();
   const perms = usePermissions();
+  const activeFunnelReady = !funnelLoading && !!activeFunnelId && !!activeFunnel;
+  const stages = useStages(activeFunnelId, activeFunnelReady);
+  const leads = useLeads(activeFunnelId, activeFunnelReady);
 
   const [search, setSearch] = useState("");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
@@ -88,6 +101,7 @@ const Index = () => {
   const [newFunnelName, setNewFunnelName] = useState("");
   const [renameFunnelName, setRenameFunnelName] = useState("");
   const [editingFunnelId, setEditingFunnelId] = useState<string | null>(null);
+  const [funnelPendingDeletion, setFunnelPendingDeletion] = useState<Funnel | null>(null);
   const funnelClickTimerRef = useRef<number | null>(null);
 
   const today = useMemo(() => {
@@ -239,6 +253,17 @@ const Index = () => {
     setEditingFunnelId(null);
   };
 
+  const requestFunnelDeletion = (funnel: Funnel) => {
+    setFunnelPendingDeletion(funnel);
+    setFunnelMenuOpen(false);
+  };
+
+  const handleDeleteFunnel = async () => {
+    if (!funnelPendingDeletion) return;
+    await deleteFunnel.mutateAsync(funnelPendingDeletion.id);
+    setFunnelPendingDeletion(null);
+  };
+
   const handleFunnelItemClick = (funnelId: string) => {
     if (funnelClickTimerRef.current) {
       window.clearTimeout(funnelClickTimerRef.current);
@@ -344,12 +369,20 @@ const Index = () => {
                         </Button>
                       </div>
                     ) : (
-                      <button
+                      <div
                         key={funnel.id}
-                        type="button"
                         onClick={() => handleFunnelItemClick(funnel.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            handleFunnelItemClick(funnel.id);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
                         className={cn(
                           "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-muted/60",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30",
                           activeFunnelId === funnel.id && "bg-muted/60",
                         )}
                       >
@@ -363,30 +396,51 @@ const Index = () => {
                           {funnel.name}
                         </span>
                         {canRenameFunnels && (
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              if (funnelClickTimerRef.current) {
-                                window.clearTimeout(funnelClickTimerRef.current);
-                                funnelClickTimerRef.current = null;
-                              }
-                              openInlineFunnelRename(funnel);
-                            }}
-                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground/70 transition-colors hover:bg-accent/10 hover:text-accent"
-                            aria-label={`Editar nome do funil ${funnel.name}`}
-                            title="Editar nome do funil"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
+                          <div className="ml-auto flex items-center gap-1">
+                            {!funnel.is_default && (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  if (funnelClickTimerRef.current) {
+                                    window.clearTimeout(funnelClickTimerRef.current);
+                                    funnelClickTimerRef.current = null;
+                                  }
+                                  requestFunnelDeletion(funnel);
+                                }}
+                                className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground/70 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                aria-label={`Excluir funil ${funnel.name}`}
+                                title="Excluir funil"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                if (funnelClickTimerRef.current) {
+                                  window.clearTimeout(funnelClickTimerRef.current);
+                                  funnelClickTimerRef.current = null;
+                                }
+                                openInlineFunnelRename(funnel);
+                              }}
+                              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground/70 transition-colors hover:bg-accent/10 hover:text-accent"
+                              aria-label={`Editar nome do funil ${funnel.name}`}
+                              title="Editar nome do funil"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         )}
                         {funnel.is_default && (
-                          <Badge variant="secondary" className="ml-auto">
+                          <Badge variant="secondary">
                             Principal
                           </Badge>
                         )}
-                      </button>
+                      </div>
                     )
                   ))}
                 </DropdownMenuGroup>
@@ -704,6 +758,40 @@ const Index = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!funnelPendingDeletion}
+        onOpenChange={(open) => {
+          if (!open && !deleteFunnel.isPending) {
+            setFunnelPendingDeletion(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir funil</AlertDialogTitle>
+            <AlertDialogDescription>
+              {funnelPendingDeletion
+                ? `Tem certeza que deseja excluir o funil "${funnelPendingDeletion.name}"? Essa acao nao pode ser desfeita.`
+                : "Confirme a exclusao do funil."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteFunnel.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteFunnel();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteFunnel.isPending}
+            >
+              {deleteFunnel.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Excluir funil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

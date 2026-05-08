@@ -28,8 +28,9 @@ const stageColorVar: Record<string, string> = {
 
 const Dashboard = () => {
   const { activeFunnel, activeFunnelId, loading: funnelLoading } = useActiveFunnel();
-  const stages = useStages(activeFunnelId, !!activeFunnelId);
-  const leads = useLeads(activeFunnelId, !!activeFunnelId);
+  const activeFunnelReady = !funnelLoading && !!activeFunnelId && !!activeFunnel;
+  const stages = useStages(activeFunnelId, activeFunnelReady);
+  const leads = useLeads(activeFunnelId, activeFunnelReady);
 
   const today = useMemo(() => {
     const d = new Date();
