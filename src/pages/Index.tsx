@@ -53,6 +53,7 @@ import { Lead } from "@/types/crm";
 import { formatCurrency } from "@/lib/constants";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { startOfLocalDay } from "@/lib/date";
 import { needsActionToday } from "@/lib/priority";
 
 type StatusFilter = "todos" | "atrasados" | "sem_contato" | "follow_hoje" | "acao_hoje";
@@ -96,16 +97,14 @@ const Index = () => {
   }, []);
 
   const isOverdue = useCallback((lead: Lead) => {
-    if (!lead.next_follow_up) return false;
-    const d = new Date(lead.next_follow_up);
-    d.setHours(0, 0, 0, 0);
+    const d = startOfLocalDay(lead.next_follow_up);
+    if (!d) return false;
     return d.getTime() < today.getTime();
   }, [today]);
 
   const isToday = useCallback((lead: Lead) => {
-    if (!lead.next_follow_up) return false;
-    const d = new Date(lead.next_follow_up);
-    d.setHours(0, 0, 0, 0);
+    const d = startOfLocalDay(lead.next_follow_up);
+    if (!d) return false;
     return d.getTime() === today.getTime();
   }, [today]);
 

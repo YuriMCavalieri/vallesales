@@ -6,6 +6,7 @@ import {
   Calendar, DollarSign, User, CheckCircle2, Phone, Mail, MessageSquare, AlertTriangle, UserX, Flame, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { startOfLocalDay } from "@/lib/date";
 import { getLeadPriority, needsActionToday, priorityMeta } from "@/lib/priority";
 
 interface Props {
@@ -30,10 +31,9 @@ const tempLabel: Record<string, string> = { frio: "Frio", morno: "Morno", quente
 
 type FollowUpStatus = "atrasado" | "hoje" | "futuro" | "sem";
 function getFollowUpStatus(date: string | null | undefined): FollowUpStatus {
-  if (!date) return "sem";
-  const d = new Date(date);
+  const d = startOfLocalDay(date);
+  if (!d) return "sem";
   const today = new Date();
-  d.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);
   if (d.getTime() < today.getTime()) return "atrasado";
   if (d.getTime() === today.getTime()) return "hoje";
