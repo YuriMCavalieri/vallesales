@@ -217,6 +217,8 @@ const Index = () => {
   const loading = funnelLoading || stages.isLoading || leads.isLoading;
   const hasActiveFilters = ownerFilter !== "all" || statusFilter !== "todos" || !!search || onlyMine;
   const canRenameFunnels = perms.isAdmin || perms.isGestor;
+  const canRenameStages = perms.canManageTeam;
+  const canCreateStages = perms.canManageTeam;
 
   const clearFilters = () => {
     setSearch("");
@@ -679,6 +681,7 @@ const Index = () => {
               </div>
             ) : (
               <KanbanBoard
+                funnelId={activeFunnelId}
                 stages={stages.data ?? []}
                 leads={filteredLeads}
                 profiles={profiles.data ?? []}
@@ -686,6 +689,8 @@ const Index = () => {
                 onAddInStage={(stageId) => openNew(stageId)}
                 canAddLead={perms.canCreateLead}
                 canMoveLead={canEditLead}
+                canRenameStages={canRenameStages}
+                canCreateStages={canCreateStages}
               />
             )}
           </div>

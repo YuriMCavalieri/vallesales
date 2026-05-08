@@ -473,6 +473,25 @@ export type Database = {
           updated_at: string
         }
       }
+      create_pipeline_stage: {
+        Args: {
+          _after_stage_id?: string
+          _funnel_id: string
+          _name: string
+        }
+        Returns: {
+          color: string | null
+          created_at: string
+          funnel_id: string
+          id: string
+          is_lost: boolean
+          is_won: boolean
+          key: string
+          name: string
+          position: number
+          updated_at: string
+        }
+      }
       delete_funnel: {
         Args: {
           _funnel_id: string
@@ -532,6 +551,25 @@ export type Database = {
           id: string
           is_default: boolean
           name: string
+          updated_at: string
+        }
+      }
+      rename_pipeline_stage: {
+        Args: {
+          _funnel_id: string
+          _name: string
+          _stage_id: string
+        }
+        Returns: {
+          color: string | null
+          created_at: string
+          funnel_id: string
+          id: string
+          is_lost: boolean
+          is_won: boolean
+          key: string
+          name: string
+          position: number
           updated_at: string
         }
       }

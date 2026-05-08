@@ -11,6 +11,21 @@ type ApiErrorPayload = {
 const hasApiError = (data: unknown): data is ApiErrorPayload =>
   typeof data === "object" && data !== null && "error" in data;
 
+const shouldFallbackToDirectStageUpdate = (error: { message?: string; details?: string; code?: string } | null) => {
+  const haystack = `${error?.message ?? ""} ${error?.details ?? ""}`.toLowerCase();
+  return haystack.includes("rename_pipeline_stage") && haystack.includes("schema cache");
+};
+
+const shouldExplainMissingCreateStageRpc = (error: { message?: string; details?: string; code?: string } | null) => {
+  const haystack = `${error?.message ?? ""} ${error?.details ?? ""}`.toLowerCase();
+  return haystack.includes("create_pipeline_stage") && haystack.includes("schema cache");
+};
+
+const buildStageKey = () => `stage_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+
+const sortStagesByPosition = (stages: PipelineStage[]) =>
+  [...stages].sort((left, right) => left.position - right.position || left.created_at.localeCompare(right.created_at));
+
 const invokeLeadsApi = async <T>(body: Record<string, unknown>): Promise<T> => {
   const { data, error } = await supabase.functions.invoke("leads-api", { body });
   if (error) throw error;
@@ -33,6 +48,171 @@ export const useStages = (funnelId?: string | null, enabled = true) => {
       if (error) throw error;
       return data as PipelineStage[];
     },
+  });
+};
+
+export const useRenamePipelineStage = () => {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      funnelId,
+      stageId,
+      name,
+    }: {
+      funnelId: string;
+      stageId: string;
+      name: string;
+    }) => {
+      const trimmed = name.trim();
+      if (!trimmed) {
+        throw new Error("Informe o nome da etapa.");
+      }
+
+      const { data, error } = await supabase.rpc("rename_pipeline_stage", {
+        _funnel_id: funnelId,
+        _stage_id: stageId,
+        _name: trimmed,
+      });
+      if (error) {
+        if (!shouldFallbackToDirectStageUpdate(error)) {
+          throw error;
+        }
+
+        const { data: directData, error: directError } = await supabase
+          .from("pipeline_stages")
+          .update({ name: trimmed })
+          .eq("id", stageId)
+          .eq("funnel_id", funnelId)
+          .select("*")
+          .single();
+
+        if (directError) throw directError;
+        return directData as PipelineStage;
+      }
+      return data as PipelineStage;
+    },
+    onSuccess: (updatedStage) => {
+      qc.setQueriesData<PipelineStage[]>({ queryKey: ["pipeline_stages"] }, (current) =>
+        current ? current.map((stage) => (stage.id === updatedStage.id ? updatedStage : stage)) : current,
+      );
+      qc.invalidateQueries({ queryKey: ["pipeline_stages"] });
+      toast.success("Nome da etapa atualizado");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+};
+
+export const useCreatePipelineStage = () => {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      funnelId,
+      name,
+      afterStageId,
+    }: {
+      funnelId: string;
+      name: string;
+      afterStageId?: string | null;
+    }) => {
+      const trimmed = name.trim();
+      if (!trimmed) {
+        throw new Error("Informe o nome da etapa.");
+      }
+
+      const { data, error } = await supabase.rpc("create_pipeline_stage", {
+        _after_stage_id: afterStageId ?? null,
+        _funnel_id: funnelId,
+        _name: trimmed,
+      });
+
+      if (error) {
+        if (!shouldExplainMissingCreateStageRpc(error)) {
+          throw error;
+        }
+
+        const { data: currentStages, error: stagesError } = await supabase
+          .from("pipeline_stages")
+          .select("*")
+          .eq("funnel_id", funnelId)
+          .order("position");
+
+        if (stagesError) throw stagesError;
+
+        const stages = (currentStages ?? []) as PipelineStage[];
+        const referenceStage = afterStageId ? stages.find((stage) => stage.id === afterStageId) ?? null : null;
+
+        if (afterStageId && !referenceStage) {
+          throw new Error("Nao foi possivel encontrar a etapa de referencia neste funil.");
+        }
+
+        let insertPosition = 1;
+
+        if (referenceStage) {
+          insertPosition = referenceStage.is_won || referenceStage.is_lost
+            ? referenceStage.position
+            : referenceStage.position + 1;
+        } else {
+          const firstTerminalStage = sortStagesByPosition(stages).find((stage) => stage.is_won || stage.is_lost) ?? null;
+          insertPosition = firstTerminalStage
+            ? firstTerminalStage.position
+            : Math.max(0, ...stages.map((stage) => stage.position)) + 1;
+        }
+
+        const stagesToShift = sortStagesByPosition(
+          stages.filter((stage) => stage.position >= insertPosition),
+        ).reverse();
+
+        for (const stage of stagesToShift) {
+          const { error: shiftError } = await supabase
+            .from("pipeline_stages")
+            .update({ position: stage.position + 1 })
+            .eq("id", stage.id)
+            .eq("funnel_id", funnelId);
+
+          if (shiftError) throw shiftError;
+        }
+
+        const { data: insertedStage, error: insertError } = await supabase
+          .from("pipeline_stages")
+          .insert({
+            funnel_id: funnelId,
+            key: buildStageKey(),
+            name: trimmed,
+            position: insertPosition,
+            color: null,
+            is_won: false,
+            is_lost: false,
+          })
+          .select("*")
+          .single();
+
+        if (insertError) throw insertError;
+        return insertedStage as PipelineStage;
+      }
+
+      return data as PipelineStage;
+    },
+    onSuccess: (createdStage) => {
+      qc.setQueriesData<PipelineStage[]>({ queryKey: ["pipeline_stages"] }, (current) =>
+        current
+          ? sortStagesByPosition([
+              ...current
+                .filter((stage) => stage.id !== createdStage.id)
+                .map((stage) => (
+                  stage.position >= createdStage.position
+                    ? { ...stage, position: stage.position + 1 }
+                    : stage
+                )),
+              createdStage,
+            ])
+          : current,
+      );
+      qc.invalidateQueries({ queryKey: ["pipeline_stages"] });
+      toast.success("Etapa criada");
+    },
+    onError: (error: Error) => toast.error(error.message),
   });
 };
 
