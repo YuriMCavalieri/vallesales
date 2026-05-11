@@ -21,6 +21,11 @@ const shouldExplainMissingCreateStageRpc = (error: { message?: string; details?:
   return haystack.includes("create_pipeline_stage") && haystack.includes("schema cache");
 };
 
+const shouldFallbackToDirectStageDelete = (error: { message?: string; details?: string; code?: string } | null) => {
+  const haystack = `${error?.message ?? ""} ${error?.details ?? ""}`.toLowerCase();
+  return haystack.includes("delete_pipeline_stage") && haystack.includes("schema cache");
+};
+
 const buildStageKey = () => `stage_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 
 const sortStagesByPosition = (stages: PipelineStage[]) =>
@@ -211,6 +216,108 @@ export const useCreatePipelineStage = () => {
       );
       qc.invalidateQueries({ queryKey: ["pipeline_stages"] });
       toast.success("Etapa criada");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+};
+
+export const useDeletePipelineStage = () => {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      funnelId,
+      stageId,
+    }: {
+      funnelId: string;
+      stageId: string;
+    }) => {
+      const { error } = await supabase.rpc("delete_pipeline_stage", {
+        _funnel_id: funnelId,
+        _stage_id: stageId,
+      });
+
+      if (error) {
+        if (!shouldFallbackToDirectStageDelete(error)) {
+          throw error;
+        }
+
+        const { data: currentStages, error: stagesError } = await supabase
+          .from("pipeline_stages")
+          .select("*")
+          .eq("funnel_id", funnelId)
+          .order("position");
+
+        if (stagesError) throw stagesError;
+
+        const stages = (currentStages ?? []) as PipelineStage[];
+        const targetStage = stages.find((stage) => stage.id === stageId) ?? null;
+
+        if (!targetStage) {
+          throw new Error("Etapa do funil nao encontrada.");
+        }
+
+        if (targetStage.is_won || targetStage.is_lost) {
+          throw new Error("As etapas finais de ganho ou perda nao podem ser excluidas.");
+        }
+
+        const { count, error: countError } = await supabase
+          .from("leads")
+          .select("id", { count: "exact", head: true })
+          .eq("funnel_id", funnelId)
+          .eq("stage_id", stageId);
+
+        if (countError) throw countError;
+
+        if ((count ?? 0) > 0) {
+          throw new Error("Nao e possivel excluir uma etapa que ainda possui leads vinculados.");
+        }
+
+        const { error: deleteError } = await supabase
+          .from("pipeline_stages")
+          .delete()
+          .eq("id", stageId)
+          .eq("funnel_id", funnelId);
+
+        if (deleteError) throw deleteError;
+
+        const stagesToShift = sortStagesByPosition(
+          stages.filter((stage) => stage.id !== stageId && stage.position > targetStage.position),
+        );
+
+        for (const stage of stagesToShift) {
+          const { error: shiftError } = await supabase
+            .from("pipeline_stages")
+            .update({ position: stage.position - 1 })
+            .eq("id", stage.id)
+            .eq("funnel_id", funnelId);
+
+          if (shiftError) throw shiftError;
+        }
+      }
+      return { funnelId, stageId };
+    },
+    onSuccess: ({ funnelId, stageId }) => {
+      qc.setQueriesData<PipelineStage[]>({ queryKey: ["pipeline_stages"] }, (current) => {
+        if (!current) return current;
+
+        const deletedStage = current.find((stage) => stage.id === stageId && stage.funnel_id === funnelId);
+        if (!deletedStage) {
+          return current;
+        }
+
+        return sortStagesByPosition(
+          current
+            .filter((stage) => stage.id !== stageId)
+            .map((stage) => (
+              stage.funnel_id === funnelId && stage.position > deletedStage.position
+                ? { ...stage, position: stage.position - 1 }
+                : stage
+            )),
+        );
+      });
+      qc.invalidateQueries({ queryKey: ["pipeline_stages"] });
+      toast.success("Etapa excluida");
     },
     onError: (error: Error) => toast.error(error.message),
   });

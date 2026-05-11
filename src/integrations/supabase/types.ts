@@ -498,6 +498,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      delete_pipeline_stage: {
+        Args: {
+          _funnel_id: string
+          _stage_id: string
+        }
+        Returns: boolean
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]

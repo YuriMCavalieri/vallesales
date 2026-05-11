@@ -399,6 +399,23 @@ const Index = () => {
                         </span>
                         {canRenameFunnels && (
                           <div className="ml-auto flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                if (funnelClickTimerRef.current) {
+                                  window.clearTimeout(funnelClickTimerRef.current);
+                                  funnelClickTimerRef.current = null;
+                                }
+                                openInlineFunnelRename(funnel);
+                              }}
+                              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground/70 transition-colors hover:bg-accent/10 hover:text-accent"
+                              aria-label={`Editar nome do funil ${funnel.name}`}
+                              title="Editar nome do funil"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
                             {!funnel.is_default && (
                               <button
                                 type="button"
@@ -418,23 +435,6 @@ const Index = () => {
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             )}
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                if (funnelClickTimerRef.current) {
-                                  window.clearTimeout(funnelClickTimerRef.current);
-                                  funnelClickTimerRef.current = null;
-                                }
-                                openInlineFunnelRename(funnel);
-                              }}
-                              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground/70 transition-colors hover:bg-accent/10 hover:text-accent"
-                              aria-label={`Editar nome do funil ${funnel.name}`}
-                              title="Editar nome do funil"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
                           </div>
                         )}
                         {funnel.is_default && (
@@ -496,6 +496,7 @@ const Index = () => {
                     </DropdownMenuItem>
                   </>
                 )}
+
               </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -691,6 +692,7 @@ const Index = () => {
                 canMoveLead={canEditLead}
                 canRenameStages={canRenameStages}
                 canCreateStages={canCreateStages}
+                canDeleteStages={perms.canManageTeam}
               />
             )}
           </div>
