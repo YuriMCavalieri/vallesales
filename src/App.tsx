@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard.tsx";
 import Configuracoes from "./pages/Configuracoes.tsx";
 import AguardandoAprovacao from "./pages/AguardandoAprovacao.tsx";
 import Auth from "./pages/Auth.tsx";
+import PublicLeadForm from "./pages/PublicLeadForm.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient({
@@ -48,6 +49,8 @@ const App = () => (
             <ActiveFunnelProvider>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/captacao" element={<PublicLeadForm />} />
+                <Route path="/fale-conosco" element={<PublicLeadForm />} />
                 <Route path="/aguardando-aprovacao" element={<ProtectedRoute><AguardandoAprovacao /></ProtectedRoute>} />
                 <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/contatos" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />

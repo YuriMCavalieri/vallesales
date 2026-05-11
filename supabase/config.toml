@@ -1,3 +1,6 @@
 project_id = "lqrfdqmayzcnmdjabtsu"
 [functions.leads-api]
 verify_jwt = false
+
+[functions.public-lead-intake]
+verify_jwt = false
