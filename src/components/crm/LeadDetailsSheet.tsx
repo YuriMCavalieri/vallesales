@@ -205,7 +205,7 @@ export const LeadDetailsSheet = ({
               </Badge>
               {lead.has_been_contacted && (
                 <Badge variant="outline" className="border-success/30 bg-success/20 text-success">
-                  Contatado
+                  Contato realizado
                 </Badge>
               )}
             </div>

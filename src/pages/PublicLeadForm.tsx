@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { Building2, CheckCircle2, ChevronDown, Loader2, Send } from "lucide-react";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -225,6 +226,9 @@ const PublicLeadForm = () => {
     const companyOrPerson = isOpeningCompany
       ? `Abertura de empresa - ${form.contact_name.trim()}`
       : form.company_or_person.trim();
+    const employeeCountTotal = isOpeningCompany
+      ? "0"
+      : String((Number(form.employee_count_clt || 0) || 0) + (Number(form.employee_count_pj || 0) || 0));
 
     const { data, error } = await supabase.functions.invoke("public-lead-intake", {
       body: {
@@ -234,6 +238,7 @@ const PublicLeadForm = () => {
         service_types: isOpeningCompany ? [DEFAULT_OPENING_COMPANY_SERVICE] : form.service_types,
         phone: formatPhone(form.phone),
         email: form.email.trim(),
+        employee_count: employeeCountTotal,
         cnpj: isOpeningCompany ? "" : form.cnpj.trim(),
         employee_count_clt: isOpeningCompany ? "" : form.employee_count_clt.trim(),
         employee_count_pj: isOpeningCompany ? "" : form.employee_count_pj.trim(),

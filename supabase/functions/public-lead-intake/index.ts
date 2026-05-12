@@ -136,6 +136,23 @@ const getDefaultFunnelAndStage = async () => {
     throw new Error("Nenhum funil disponivel para receber captacoes.");
   }
 
+  const [preferredStage] = await sql`
+    select id, name
+    from public.pipeline_stages
+    where funnel_id = ${funnel.id}
+      and key = 'novo_lead'
+      and is_won = false
+      and is_lost = false
+    limit 1
+  `;
+
+  if (preferredStage) {
+    return {
+      funnelId: funnel.id as string,
+      stageId: preferredStage.id as string,
+    };
+  }
+
   const [stage] = await sql`
     select id, name
     from public.pipeline_stages

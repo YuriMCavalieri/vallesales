@@ -290,7 +290,7 @@ const Index = () => {
             </p>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
               <div className="min-w-0">
-                <h2 className="text-xl tracking-[-0.02em] text-black md:text-[1.9rem]">
+                <h2 className="text-xl tracking-[-0.02em] text-foreground md:text-[1.9rem]">
                   <span className="font-semibold">Funil </span>
                   <span className="font-bold text-accent">
                     {funnelLoading ? "Carregando..." : activeFunnel?.name ?? "disponivel"}

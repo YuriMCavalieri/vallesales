@@ -454,6 +454,33 @@ export const useLeadNotes = (leadId: string | null) => {
   });
 };
 
+export const addLeadNoteEntry = async ({
+  leadId,
+  content,
+  userId,
+  activityDescription = "Nova observacao adicionada",
+}: {
+  leadId: string;
+  content: string;
+  userId?: string | null;
+  activityDescription?: string;
+}) => {
+  const { data, error } = await supabase.from("lead_notes")
+    .insert({ lead_id: leadId, content, created_by: userId, updated_by: userId })
+    .select().single();
+  if (error) throw error;
+
+  await supabase.from("lead_activities").insert({
+    lead_id: leadId,
+    type: "note_added",
+    description: activityDescription,
+    created_by: userId,
+    updated_by: userId,
+  });
+
+  return data;
+};
+
 export const useAddNote = (leadId: string) => {
   const qc = useQueryClient();
   const { user } = useAuth();

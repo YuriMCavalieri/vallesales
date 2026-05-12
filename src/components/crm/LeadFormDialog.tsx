@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useAssignableProfiles, useCreateLead, useProfiles, useStages, useUpdateLead, uploadLeadAttachmentFile } from "@/hooks/useLeads";
+import { addLeadNoteEntry, useAssignableProfiles, useCreateLead, useProfiles, useStages, useUpdateLead, uploadLeadAttachmentFile } from "@/hooks/useLeads";
 import { useActiveFunnel } from "@/hooks/useActiveFunnel";
 import { useAuth } from "@/hooks/useAuth";
 import { Lead } from "@/types/crm";
@@ -177,6 +177,8 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
   const [errors, setErrors] = useState<FormErrors>({});
   const [payrollReportFile, setPayrollReportFile] = useState<File | null>(null);
   const [trialBalanceFile, setTrialBalanceFile] = useState<File | null>(null);
+  const [lossReasonDialogOpen, setLossReasonDialogOpen] = useState(false);
+  const [lossReason, setLossReason] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -184,6 +186,8 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
     setErrors({});
     setPayrollReportFile(null);
     setTrialBalanceFile(null);
+    setLossReasonDialogOpen(false);
+    setLossReason("");
     if (payrollReportInputRef.current) payrollReportInputRef.current.value = "";
     if (trialBalanceInputRef.current) trialBalanceInputRef.current.value = "";
     setTimeout(() => firstFieldRef.current?.focus(), 50);
@@ -258,10 +262,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
     return Object.keys(nextErrors).length === 0;
   };
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!validateForm()) return;
-
+  const saveLead = async (lostReasonText?: string) => {
     const payload = {
       funnel_id: form.funnel_id,
       company_or_person: form.company_or_person.trim(),
@@ -302,6 +303,20 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
     const savedLead = lead
       ? await update.mutateAsync({ id: lead.id, ...payload })
       : await create.mutateAsync(payload);
+
+    if (lostReasonText?.trim()) {
+      await addLeadNoteEntry({
+        leadId: savedLead.id,
+        content: `Motivo da perda: ${lostReasonText.trim()}`,
+        userId: user?.id,
+        activityDescription: "Motivo da perda registrado",
+      });
+      qc.invalidateQueries({ queryKey: ["lead_notes", savedLead.id] });
+      qc.invalidateQueries({ queryKey: ["lead_activities", savedLead.id] });
+      qc.invalidateQueries({ queryKey: ["lead", savedLead.id] });
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      qc.invalidateQueries({ queryKey: ["crm_notifications_feed"] });
+    }
 
     const pendingUploads = [
       payrollReportFile
@@ -348,12 +363,31 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
       }
     }
 
+    setLossReasonDialogOpen(false);
+    setLossReason("");
     onOpenChange(false);
   };
 
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!validateForm()) return;
+
+    const targetStage = stages.find((stage) => stage.id === form.stage_id);
+    const currentStage = lead ? stages.find((stage) => stage.id === lead.stage_id) : null;
+    const isMovingToLost = targetStage?.is_lost && !currentStage?.is_lost;
+
+    if (isMovingToLost) {
+      setLossReasonDialogOpen(true);
+      return;
+    }
+
+    await saveLead();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar lead" : "Novo lead"}</DialogTitle>
           <DialogDescription>
@@ -984,9 +1018,57 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
               {isEdit ? "Salvar alteracoes" : "Criar lead"}
             </Button>
           </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={lossReasonDialogOpen}
+        onOpenChange={(nextOpen) => {
+          if (!loading) {
+            setLossReasonDialogOpen(nextOpen);
+            if (!nextOpen) setLossReason("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Registrar motivo da perda</DialogTitle>
+            <DialogDescription>
+              Antes de mover este lead para perdido, descreva o motivo para manter o historico comercial registrado.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Textarea
+              rows={4}
+              placeholder="Ex.: achou o preco alto, nao obtive mais resposta, fechou com outro fornecedor..."
+              value={lossReason}
+              onChange={(event) => setLossReason(event.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setLossReasonDialogOpen(false);
+                setLossReason("");
+              }}
+              disabled={loading}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" variant="accent" onClick={() => void saveLead(lossReason)} disabled={loading || !lossReason.trim()}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar e mover
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

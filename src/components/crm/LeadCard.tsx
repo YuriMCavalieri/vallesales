@@ -161,7 +161,7 @@ export const LeadCard = ({ lead, profiles, onClick, onDragStart, draggable = tru
         <div className="flex items-center gap-1.5 pt-1.5 border-t border-border/50 mt-2">
           {lead.has_been_contacted ? (
             <span className="inline-flex items-center gap-1 text-[10px] text-success font-medium">
-              <CheckCircle2 className="h-3 w-3" /> Contatado
+              <CheckCircle2 className="h-3 w-3" /> Contato realizado
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-[10px] text-warning font-semibold">

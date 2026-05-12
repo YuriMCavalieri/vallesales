@@ -1,9 +1,11 @@
 import { Lead, PipelineStage, Profile } from "@/types/crm";
 import { LeadCard } from "./LeadCard";
-import { useCreatePipelineStage, useDeletePipelineStage, useRenamePipelineStage, useUpdateLead } from "@/hooks/useLeads";
+import { addLeadNoteEntry, useCreatePipelineStage, useDeletePipelineStage, useRenamePipelineStage, useUpdateLead } from "@/hooks/useLeads";
 import { Check, Loader2, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,8 +23,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatCurrency } from "@/lib/constants";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { Fragment, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface Props {
   stages: PipelineStage[];
@@ -65,6 +70,8 @@ export const KanbanBoard = ({
   const createStage = useCreatePipelineStage();
   const deleteStage = useDeletePipelineStage();
   const renameStage = useRenamePipelineStage();
+  const qc = useQueryClient();
+  const { user } = useAuth();
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [overStageId, setOverStageId] = useState<string | null>(null);
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
@@ -72,6 +79,9 @@ export const KanbanBoard = ({
   const [creatingAfterStageId, setCreatingAfterStageId] = useState<string | null>(null);
   const [newStageName, setNewStageName] = useState("");
   const [stagePendingDeletion, setStagePendingDeletion] = useState<PipelineStage | null>(null);
+  const [lostLeadPending, setLostLeadPending] = useState<{ lead: Lead; targetStageId: string; stageName: string } | null>(null);
+  const [lossReason, setLossReason] = useState("");
+  const [savingLostReason, setSavingLostReason] = useState(false);
 
   const leadsByStage = useMemo(() => {
     const map: Record<string, Lead[]> = {};
@@ -93,13 +103,38 @@ export const KanbanBoard = ({
     return max;
   }, [stages, leadsByStage]);
 
+  const finalizeLeadStageChange = async (lead: Lead, stageId: string, lostReasonText?: string) => {
+    await update.mutateAsync({ id: lead.id, stage_id: stageId });
+
+    if (lostReasonText?.trim()) {
+      await addLeadNoteEntry({
+        leadId: lead.id,
+        content: `Motivo da perda: ${lostReasonText.trim()}`,
+        userId: user?.id,
+        activityDescription: "Motivo da perda registrado",
+      });
+      qc.invalidateQueries({ queryKey: ["lead_notes", lead.id] });
+      qc.invalidateQueries({ queryKey: ["lead_activities", lead.id] });
+      qc.invalidateQueries({ queryKey: ["lead", lead.id] });
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      qc.invalidateQueries({ queryKey: ["crm_notifications_feed"] });
+    }
+  };
+
   const handleDrop = async (stageId: string) => {
     if (!draggedId) return;
     const lead = leads.find((item) => item.id === draggedId);
+    const targetStage = stages.find((item) => item.id === stageId);
+    const currentStage = lead ? stages.find((item) => item.id === lead.stage_id) : null;
     setDraggedId(null);
     setOverStageId(null);
     if (!lead || lead.stage_id === stageId) return;
-    await update.mutateAsync({ id: lead.id, stage_id: stageId });
+    if (targetStage?.is_lost && !currentStage?.is_lost) {
+      setLossReason("");
+      setLostLeadPending({ lead, targetStageId: stageId, stageName: targetStage.name });
+      return;
+    }
+    await finalizeLeadStageChange(lead, stageId);
   };
 
   const openStageRename = (stage: PipelineStage) => {
@@ -158,6 +193,21 @@ export const KanbanBoard = ({
       name: newStageName,
     });
     cancelCreateStage();
+  };
+
+  const handleConfirmLostLead = async () => {
+    if (!lostLeadPending || !lossReason.trim()) return;
+
+    setSavingLostReason(true);
+    try {
+      await finalizeLeadStageChange(lostLeadPending.lead, lostLeadPending.targetStageId, lossReason);
+      setLostLeadPending(null);
+      setLossReason("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Nao foi possivel mover o lead para perdido.");
+    } finally {
+      setSavingLostReason(false);
+    }
   };
 
   return (
@@ -470,6 +520,55 @@ export const KanbanBoard = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={!!lostLeadPending}
+        onOpenChange={(open) => {
+          if (!open && !savingLostReason) {
+            setLostLeadPending(null);
+            setLossReason("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar motivo da perda</DialogTitle>
+            <DialogDescription>
+              {lostLeadPending
+                ? `O lead sera movido para "${lostLeadPending.stageName}". Informe o motivo para manter o historico comercial completo.`
+                : "Informe o motivo da perda deste lead."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Textarea
+              rows={4}
+              placeholder="Ex.: achou o preco alto, nao obtive mais resposta, projeto foi adiado..."
+              value={lossReason}
+              onChange={(event) => setLossReason(event.target.value)}
+              disabled={savingLostReason}
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setLostLeadPending(null);
+                setLossReason("");
+              }}
+              disabled={savingLostReason}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" variant="accent" onClick={() => void handleConfirmLostLead()} disabled={savingLostReason || !lossReason.trim()}>
+              {savingLostReason && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar e mover
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
