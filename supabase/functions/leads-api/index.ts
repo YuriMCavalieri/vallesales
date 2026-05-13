@@ -29,6 +29,7 @@ const authClient = createClient(supabaseUrl, serviceRoleKey, {
 
 type AppRole = "admin" | "gestor" | "consultor" | "visualizador";
 type UserAccessStatus = "pending" | "active" | "suspended" | "inactive";
+type ArchivedSelection = "active" | "archived" | "all";
 
 type LeadPayload = Record<string, unknown>;
 type AdditionalContactPayload = {
@@ -125,6 +126,13 @@ const formatDateOnly = (value: Date | string | null | undefined) => {
   const normalized = normalizeOptionalString(value);
   if (!normalized) return null;
   return normalized.slice(0, 10);
+};
+
+const formatDateTimeValue = (value: Date | string | null | undefined) => {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString();
+  const normalized = normalizeOptionalString(value);
+  return normalized ?? null;
 };
 
 const normalizePhone = (value: unknown) => {
@@ -311,7 +319,10 @@ const normalizeLead = (lead: LeadRow | null) => {
   if (!lead) return lead;
   return {
     ...lead,
+    archived_at: formatDateTimeValue(lead.archived_at as Date | string | null | undefined),
+    lost_at: formatDateTimeValue(lead.lost_at as Date | string | null | undefined),
     next_follow_up: formatDateOnly(lead.next_follow_up),
+    won_at: formatDateTimeValue(lead.won_at as Date | string | null | undefined),
   };
 };
 
@@ -345,6 +356,14 @@ const canAccessLead = (lead: LeadRow, ctx: SessionContext) => {
   const flags = roleFlags(ctx.roles);
   if (!userCanAccessFunnel(ctx, lead.funnel_id)) return false;
   if (flags.canReadAll) return true;
+  if (flags.isConsultor) return lead.owner_id === ctx.userId || lead.created_by === ctx.userId;
+  return false;
+};
+
+const canEditLeadRecord = (lead: LeadRow, ctx: SessionContext) => {
+  const flags = roleFlags(ctx.roles);
+  if (!userCanAccessFunnel(ctx, lead.funnel_id)) return false;
+  if (flags.canManageAll) return true;
   if (flags.isConsultor) return lead.owner_id === ctx.userId || lead.created_by === ctx.userId;
   return false;
 };
@@ -475,6 +494,44 @@ const getStageName = async (stageId: string | null) => {
   return stage?.name || "?";
 };
 
+const getStageSnapshot = async (stageId: string | null | undefined) => {
+  if (!stageId) return null;
+  const [stage] = await sql`
+    select id, funnel_id, name, position, is_won, is_lost
+    from public.pipeline_stages
+    where id = ${stageId}
+    limit 1
+  `;
+  return stage ?? null;
+};
+
+const getFirstActiveStage = async (funnelId: string | null | undefined) => {
+  if (!funnelId) return null;
+  const [stage] = await sql`
+    select id, funnel_id, name, position, is_won, is_lost
+    from public.pipeline_stages
+    where funnel_id = ${funnelId}
+      and is_won = false
+      and is_lost = false
+    order by position asc, created_at asc
+    limit 1
+  `;
+  return stage ?? null;
+};
+
+const parseArchivedSelection = (value: unknown): ArchivedSelection => {
+  if (value === "archived" || value === "all") return value;
+  return "active";
+};
+
+const runAutoArchiveSweep = async () => {
+  try {
+    await sql`select public.archive_expired_terminal_leads()`;
+  } catch (error) {
+    console.warn("Falha ao executar o autoarquivamento de negocios fechados.", error);
+  }
+};
+
 const contactNotificationFields = [
   "company_or_person",
   "contact_name",
@@ -515,31 +572,47 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = body.action || "list";
     const requestedFunnelId = normalizeOptionalString(body.funnel_id);
+    const archivedSelection = parseArchivedSelection(body.archived);
 
     if (action === "list") {
+      await runAutoArchiveSweep();
+
       if (requestedFunnelId) {
         assertFunnelAccess(session, requestedFunnelId);
       }
 
       const rows = flags.canReadAll
-        ? await sql`select * from public.leads order by position asc, created_at desc`
+        ? archivedSelection === "archived"
+          ? await sql`select * from public.leads order by archived_at desc nulls last, updated_at desc`
+          : await sql`select * from public.leads order by position asc, created_at desc`
         : flags.isConsultor
-          ? await sql`
-              select *
-              from public.leads
-              where owner_id = ${userId} or created_by = ${userId}
-              order by position asc, created_at desc
-            `
+          ? archivedSelection === "archived"
+            ? await sql`
+                select *
+                from public.leads
+                where owner_id = ${userId} or created_by = ${userId}
+                order by archived_at desc nulls last, updated_at desc
+              `
+            : await sql`
+                select *
+                from public.leads
+                where owner_id = ${userId} or created_by = ${userId}
+                order by position asc, created_at desc
+              `
           : [];
       const filtered = rows.filter((lead) => {
         if (!canAccessLead(lead, session)) return false;
         if (requestedFunnelId && lead.funnel_id !== requestedFunnelId) return false;
+        if (archivedSelection === "active" && lead.is_archived) return false;
+        if (archivedSelection === "archived" && !lead.is_archived) return false;
         return true;
       });
       return json({ leads: filtered.map(normalizeLead) });
     }
 
     if (action === "get") {
+      await runAutoArchiveSweep();
+
       const id = body.id as string | undefined;
       if (!id) return fail("Lead nao informado.");
       const [lead] = await sql`select * from public.leads where id = ${id} limit 1`;
@@ -591,7 +664,7 @@ serve(async (req) => {
       if (!id) return fail("Lead nao informado.");
       const [current] = await sql`select * from public.leads where id = ${id} limit 1`;
       if (!current) return fail("Lead nao encontrado.", 404);
-      if (!canAccessLead(current, session)) return fail("Sem permissao para alterar este lead.", 403);
+      if (!canEditLeadRecord(current, session)) return fail("Sem permissao para alterar este lead.", 403);
 
       const rawUpdates = cleanLeadPayload(body.updates);
       const shouldEnforcePrimaryContact =
@@ -665,6 +738,132 @@ serve(async (req) => {
       }
 
       return json({ lead: normalizeLead(updated) });
+    }
+
+    if (action === "archive") {
+      const id = body.id as string | undefined;
+      if (!id) return fail("Lead nao informado.");
+
+      const [current] = await sql`select * from public.leads where id = ${id} limit 1`;
+      if (!current) return fail("Lead nao encontrado.", 404);
+      if (!canEditLeadRecord(current, session)) return fail("Sem permissao para arquivar este lead.", 403);
+
+      const currentStage = await getStageSnapshot(current.stage_id);
+      if (!currentStage?.is_won && !currentStage?.is_lost) {
+        return fail("Somente negocios perdidos ou clientes podem ser arquivados.", 400);
+      }
+
+      if (current.is_archived) {
+        return json({ lead: normalizeLead(current) });
+      }
+
+      const [archivedLead] = await sql`
+        update public.leads
+        set is_archived = true,
+            archived_by = ${userId},
+            updated_by = ${userId}
+        where id = ${id}
+        returning *
+      `;
+
+      await logActivity(
+        id,
+        "lead_updated",
+        currentStage.is_lost
+          ? "Negocio perdido arquivado manualmente."
+          : "Negocio cliente arquivado manualmente.",
+        userId,
+        { mode: "manual_archive", stage_id: archivedLead.stage_id },
+      );
+
+      return json({ lead: normalizeLead(archivedLead) });
+    }
+
+    if (action === "restore") {
+      const id = body.id as string | undefined;
+      if (!id) return fail("Lead nao informado.");
+
+      const [current] = await sql`select * from public.leads where id = ${id} limit 1`;
+      if (!current) return fail("Lead nao encontrado.", 404);
+      if (!canEditLeadRecord(current, session)) return fail("Sem permissao para restaurar este lead.", 403);
+
+      if (!current.is_archived) {
+        return json({ lead: normalizeLead(current) });
+      }
+
+      const [restoredLead] = await sql`
+        update public.leads
+        set is_archived = false,
+            archived_by = null,
+            updated_by = ${userId}
+        where id = ${id}
+        returning *
+      `;
+
+      await logActivity(
+        id,
+        "lead_updated",
+        "Negocio restaurado para o funil principal.",
+        userId,
+        { mode: "restore_from_archive", stage_id: restoredLead.stage_id },
+      );
+
+      return json({ lead: normalizeLead(restoredLead) });
+    }
+
+    if (action === "reopen") {
+      const id = body.id as string | undefined;
+      if (!id) return fail("Lead nao informado.");
+
+      const [current] = await sql`select * from public.leads where id = ${id} limit 1`;
+      if (!current) return fail("Lead nao encontrado.", 404);
+      if (!canEditLeadRecord(current, session)) return fail("Sem permissao para reabrir este lead.", 403);
+
+      const requestedStageId = normalizeOptionalString(body.target_stage_id);
+      let targetStage = requestedStageId ? await getStageSnapshot(requestedStageId) : null;
+
+      if (targetStage && targetStage.funnel_id !== current.funnel_id) {
+        return fail("A etapa selecionada nao pertence ao mesmo funil deste lead.", 400);
+      }
+
+      if (targetStage && (targetStage.is_won || targetStage.is_lost)) {
+        return fail("Selecione uma etapa ativa para reabrir este negocio.", 400);
+      }
+
+      if (!targetStage && current.last_active_stage_id) {
+        const previousActiveStage = await getStageSnapshot(current.last_active_stage_id);
+        if (previousActiveStage && !previousActiveStage.is_won && !previousActiveStage.is_lost) {
+          targetStage = previousActiveStage;
+        }
+      }
+
+      if (!targetStage) {
+        targetStage = await getFirstActiveStage(current.funnel_id);
+      }
+
+      if (!targetStage) {
+        return fail("Nao existe etapa ativa disponivel para reabrir este negocio.", 400);
+      }
+
+      const [reopenedLead] = await sql`
+        update public.leads
+        set stage_id = ${targetStage.id},
+            is_archived = false,
+            archived_by = null,
+            updated_by = ${userId}
+        where id = ${id}
+        returning *
+      `;
+
+      await logActivity(
+        id,
+        "lead_updated",
+        `Negocio reaberto na etapa "${targetStage.name}".`,
+        userId,
+        { mode: "reopen", stage_id: targetStage.id },
+      );
+
+      return json({ lead: normalizeLead(reopenedLead) });
     }
 
     if (action === "delete") {

@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
-import { ContactRound, Kanban, LayoutDashboard, LogOut, Settings } from "lucide-react";
+import { Archive, ContactRound, Kanban, LayoutDashboard, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import valleSymbolWhite from "@/assets/valle-symbol-white.png";
 
-type AppHeaderSection = "funil" | "contatos" | "dashboard" | "configuracoes";
+type AppHeaderSection = "funil" | "contatos" | "arquivados" | "dashboard" | "configuracoes";
 
 export const AppHeader = ({ active }: { active: AppHeaderSection }) => {
   const { signOut, user } = useAuth();
@@ -43,6 +43,12 @@ export const AppHeader = ({ active }: { active: AppHeaderSection }) => {
             <Button variant="ghost" size="sm" className={navClass("contatos")}>
               <ContactRound className="h-4 w-4 md:mr-1.5" />
               <span className="hidden md:inline">Contatos</span>
+            </Button>
+          </Link>
+          <Link to="/arquivados">
+            <Button variant="ghost" size="sm" className={navClass("arquivados")}>
+              <Archive className="h-4 w-4 md:mr-1.5" />
+              <span className="hidden md:inline">Arquivados</span>
             </Button>
           </Link>
           <Link to="/dashboard">

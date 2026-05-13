@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { useStages, useLeads, useProfiles } from "@/hooks/useLeads";
+import { useArchiveLead, useStages, useLeads, useProfiles } from "@/hooks/useLeads";
 import { usePermissions } from "@/hooks/useUserRoles";
 import { useActiveFunnel } from "@/hooks/useActiveFunnel";
 import { useCreateFunnel, useDeleteFunnel, useRenameFunnel } from "@/hooks/useFunnels";
@@ -83,6 +83,7 @@ const Index = () => {
   const deleteFunnel = useDeleteFunnel();
   const renameFunnel = useRenameFunnel();
   const profiles = useProfiles();
+  const archiveLead = useArchiveLead();
   const perms = usePermissions();
   const activeFunnelReady = !funnelLoading && !!activeFunnelId && !!activeFunnel;
   const stages = useStages(activeFunnelId, activeFunnelReady);
@@ -771,6 +772,15 @@ const Index = () => {
             openEdit(selectedLead);
           }
         }}
+        archiveLead={selectedLead ? async () => {
+          const shouldArchive = window.confirm(
+            "Deseja arquivar este negocio? Ele saira do funil principal, mas continuara salvo no historico e o contato permanecera na aba Contatos.",
+          );
+          if (!shouldArchive) return;
+          await archiveLead.mutateAsync(selectedLead.id);
+          setDetailsOpen(false);
+          setSelectedLead(null);
+        } : undefined}
       />
 
       <Dialog open={funnelDialogOpen} onOpenChange={setFunnelDialogOpen}>

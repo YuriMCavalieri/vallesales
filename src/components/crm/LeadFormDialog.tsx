@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { addLeadNoteEntry, useAssignableProfiles, useCreateLead, useProfiles, useStages, useUpdateLead, uploadLeadAttachmentFile } from "@/hooks/useLeads";
+import { addLeadNoteEntry, useArchiveLead, useAssignableProfiles, useCreateLead, useProfiles, useStages, useUpdateLead, uploadLeadAttachmentFile } from "@/hooks/useLeads";
 import { useActiveFunnel } from "@/hooks/useActiveFunnel";
 import { useAuth } from "@/hooks/useAuth";
 import { Lead } from "@/types/crm";
@@ -170,6 +170,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
   const { user } = useAuth();
   const create = useCreateLead();
   const update = useUpdateLead();
+  const archiveLead = useArchiveLead();
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const payrollReportInputRef = useRef<HTMLInputElement>(null);
   const trialBalanceInputRef = useRef<HTMLInputElement>(null);
@@ -178,6 +179,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
   const [payrollReportFile, setPayrollReportFile] = useState<File | null>(null);
   const [trialBalanceFile, setTrialBalanceFile] = useState<File | null>(null);
   const [lossReasonDialogOpen, setLossReasonDialogOpen] = useState(false);
+  const [wonArchiveDialogOpen, setWonArchiveDialogOpen] = useState(false);
   const [lossReason, setLossReason] = useState("");
 
   useEffect(() => {
@@ -187,6 +189,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
     setPayrollReportFile(null);
     setTrialBalanceFile(null);
     setLossReasonDialogOpen(false);
+    setWonArchiveDialogOpen(false);
     setLossReason("");
     if (payrollReportInputRef.current) payrollReportInputRef.current.value = "";
     if (trialBalanceInputRef.current) trialBalanceInputRef.current.value = "";
@@ -202,7 +205,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
     }
   }, [defaultStageId, form.funnel_id, form.stage_id, open, stages]);
 
-  const loading = create.isPending || update.isPending;
+  const loading = create.isPending || update.isPending || archiveLead.isPending;
   const isEdit = !!lead;
   const assignableIds = new Set(assignableProfiles.map((profile) => profile.id));
   const ownerOptions = profiles.filter(
@@ -211,6 +214,16 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
   const selectedFunnel = useMemo(
     () => funnels.find((funnel) => funnel.id === form.funnel_id) ?? null,
     [form.funnel_id, funnels],
+  );
+  const selectedStage = useMemo(
+    () => stages.find((stage) => stage.id === form.stage_id) ?? null,
+    [form.stage_id, stages],
+  );
+  const canManuallyArchiveCurrentLead = Boolean(
+    lead &&
+    !lead.is_archived &&
+    selectedStage &&
+    (selectedStage.is_lost || selectedStage.is_won),
   );
   const serviceTypeOptions = useMemo(
     () => getServiceTypeOptionsForFunnel(selectedFunnel?.name),
@@ -283,7 +296,13 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
     return Object.keys(nextErrors).length === 0;
   };
 
-  const saveLead = async (lostReasonText?: string) => {
+  const saveLead = async ({
+    archiveAfterSave = false,
+    lostReasonText,
+  }: {
+    archiveAfterSave?: boolean;
+    lostReasonText?: string;
+  } = {}) => {
     const payload = {
       funnel_id: form.funnel_id,
       company_or_person: form.company_or_person.trim(),
@@ -385,7 +404,12 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
       }
     }
 
+    if (archiveAfterSave) {
+      await archiveLead.mutateAsync(savedLead.id);
+    }
+
     setLossReasonDialogOpen(false);
+    setWonArchiveDialogOpen(false);
     setLossReason("");
     onOpenChange(false);
   };
@@ -397,13 +421,34 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
     const targetStage = stages.find((stage) => stage.id === form.stage_id);
     const currentStage = lead ? stages.find((stage) => stage.id === lead.stage_id) : null;
     const isMovingToLost = targetStage?.is_lost && !currentStage?.is_lost;
+    const isMovingToWon = targetStage?.is_won && !currentStage?.is_won;
 
     if (isMovingToLost) {
       setLossReasonDialogOpen(true);
       return;
     }
 
+    if (isMovingToWon) {
+      setWonArchiveDialogOpen(true);
+      return;
+    }
+
     await saveLead();
+  };
+
+  const handleManualArchive = async () => {
+    if (!lead) return;
+
+    const shouldArchive = window.confirm(
+      "Deseja arquivar este negocio? Ele saira do funil principal, mas continuara salvo no historico e o contato permanecera na aba Contatos.",
+    );
+
+    if (!shouldArchive) return;
+
+    await archiveLead.mutateAsync(lead.id);
+    setLossReasonDialogOpen(false);
+    setWonArchiveDialogOpen(false);
+    onOpenChange(false);
   };
 
   return (
@@ -1022,6 +1067,17 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
           </FormSection>
 
           <DialogFooter className="gap-2 sm:gap-2">
+            {canManuallyArchiveCurrentLead && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleManualArchive()}
+                disabled={loading}
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Arquivar manualmente
+              </Button>
+            )}
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
@@ -1045,16 +1101,19 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Registrar motivo da perda</DialogTitle>
+            <DialogTitle>Marcar como perdido</DialogTitle>
             <DialogDescription>
-              Antes de mover este lead para perdido, descreva o motivo para manter o historico comercial registrado.
+              O lead sera movido para perdido. Escolha se deseja arquivar agora ou manter no funil por 3 dias.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Informe o motivo da perda.
+            </p>
             <Textarea
               rows={4}
-              placeholder="Ex.: achou o preco alto, nao obtive mais resposta, fechou com outro fornecedor..."
+              placeholder="Ex.: preco alto, sem retorno, fechou com outro fornecedor..."
               value={lossReason}
               onChange={(event) => setLossReason(event.target.value)}
               disabled={loading}
@@ -1073,9 +1132,55 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
             >
               Cancelar
             </Button>
-            <Button type="button" variant="accent" onClick={() => void saveLead(lossReason)} disabled={loading || !lossReason.trim()}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void saveLead({ lostReasonText: lossReason })}
+              disabled={loading || !lossReason.trim()}
+            >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Salvar e mover
+              Manter por 3 dias
+            </Button>
+            <Button
+              type="button"
+              variant="accent"
+              onClick={() => void saveLead({ lostReasonText: lossReason, archiveAfterSave: true })}
+              disabled={loading || !lossReason.trim()}
+            >
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Arquivar agora
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={wonArchiveDialogOpen}
+        onOpenChange={(nextOpen) => {
+          if (!loading) {
+            setWonArchiveDialogOpen(nextOpen);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Cliente fechado com arquivamento automatico</DialogTitle>
+            <DialogDescription>
+              Este cliente permanecera visivel no funil por 3 dias. Apos esse periodo, sera arquivado automaticamente. O historico continuara salvo e o contato permanecera na aba Contatos.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button type="button" variant="ghost" onClick={() => setWonArchiveDialogOpen(false)} disabled={loading}>
+              Cancelar
+            </Button>
+            <Button type="button" variant="outline" onClick={() => void saveLead()} disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Entendi
+            </Button>
+            <Button type="button" variant="accent" onClick={() => void saveLead({ archiveAfterSave: true })} disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Arquivar agora
             </Button>
           </DialogFooter>
         </DialogContent>

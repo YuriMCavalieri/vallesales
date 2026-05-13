@@ -309,7 +309,7 @@ const Contacts = () => {
   const [funnelFilterOpen, setFunnelFilterOpen] = useState(false);
   const accessibleFunnelIds = useMemo(() => funnels.map((funnel) => funnel.id), [funnels]);
   const hasAvailableFunnels = accessibleFunnelIds.length > 0;
-  const leads = useLeads(null, hasAvailableFunnels);
+  const leads = useLeads(null, hasAvailableFunnels, { archived: "all" });
   const stages = useStages(undefined, hasAvailableFunnels);
 
   useEffect(() => {

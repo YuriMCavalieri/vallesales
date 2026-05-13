@@ -103,6 +103,7 @@ const invokeLeadsApi = async <T>(body: Record<string, unknown>, retryOnAuthFailu
 };
 
 const ALL_FUNNELS_KEY = "__all__";
+type LeadArchiveFilter = "active" | "archived" | "all";
 
 export const useStages = (funnelId?: string | null, enabled = true) => {
   return useQuery({
@@ -387,13 +388,20 @@ export const useDeletePipelineStage = () => {
   });
 };
 
-export const useLeads = (funnelId?: string | null, enabled = true) => {
+export const useLeads = (
+  funnelId?: string | null,
+  enabled = true,
+  options?: { archived?: LeadArchiveFilter },
+) => {
+  const archived = options?.archived ?? "active";
+
   return useQuery({
-    queryKey: ["leads", funnelId ?? ALL_FUNNELS_KEY],
+    queryKey: ["leads", funnelId ?? ALL_FUNNELS_KEY, archived],
     enabled,
     queryFn: async () => {
       const data = await invokeLeadsApi<{ leads: Lead[] }>({
         action: "list",
+        archived,
         funnel_id: funnelId ?? null,
       });
       return data.leads;
@@ -462,6 +470,67 @@ export const useUpdateLead = (options?: { errorMessage?: string }) => {
       qc.invalidateQueries({ queryKey: ["crm_notifications_feed"] });
     },
     onError: (e: Error) => toast.error(options?.errorMessage ?? e.message),
+  });
+};
+
+export const useArchiveLead = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const data = await invokeLeadsApi<{ lead: Lead }>({ action: "archive", id });
+      return data.lead;
+    },
+    onSuccess: (updatedLead, id) => {
+      qc.setQueryData<Lead>(["lead", id], updatedLead);
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      qc.invalidateQueries({ queryKey: ["lead", id] });
+      qc.invalidateQueries({ queryKey: ["lead_activities", id] });
+      qc.invalidateQueries({ queryKey: ["crm_notifications_feed"] });
+      toast.success("Negocio arquivado");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+};
+
+export const useRestoreLead = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const data = await invokeLeadsApi<{ lead: Lead }>({ action: "restore", id });
+      return data.lead;
+    },
+    onSuccess: (updatedLead, id) => {
+      qc.setQueryData<Lead>(["lead", id], updatedLead);
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      qc.invalidateQueries({ queryKey: ["lead", id] });
+      qc.invalidateQueries({ queryKey: ["lead_activities", id] });
+      qc.invalidateQueries({ queryKey: ["crm_notifications_feed"] });
+      toast.success("Negocio restaurado");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+};
+
+export const useReopenLead = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, targetStageId }: { id: string; targetStageId?: string | null }) => {
+      const data = await invokeLeadsApi<{ lead: Lead }>({
+        action: "reopen",
+        id,
+        target_stage_id: targetStageId ?? null,
+      });
+      return data.lead;
+    },
+    onSuccess: (updatedLead, vars) => {
+      qc.setQueryData<Lead>(["lead", vars.id], updatedLead);
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      qc.invalidateQueries({ queryKey: ["lead", vars.id] });
+      qc.invalidateQueries({ queryKey: ["lead_activities", vars.id] });
+      qc.invalidateQueries({ queryKey: ["crm_notifications_feed"] });
+      toast.success("Negocio reaberto");
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 };
 

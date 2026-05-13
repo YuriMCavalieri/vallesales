@@ -11,6 +11,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index.tsx";
 import Contacts from "./pages/Contatos.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import ArchivedLeads from "./pages/Arquivados.tsx";
 import Configuracoes from "./pages/Configuracoes.tsx";
 import AguardandoAprovacao from "./pages/AguardandoAprovacao.tsx";
 import Auth from "./pages/Auth.tsx";
@@ -56,6 +57,7 @@ const App = () => (
                   <Route path="/aguardando-aprovacao" element={<ProtectedRoute><AguardandoAprovacao /></ProtectedRoute>} />
                   <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                   <Route path="/contatos" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
+                  <Route path="/arquivados" element={<ProtectedRoute><ArchivedLeads /></ProtectedRoute>} />
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
                   <Route path="/configuracoes/aparencia" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />

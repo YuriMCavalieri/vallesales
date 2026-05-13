@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -38,6 +38,7 @@ import {
   PhoneCall,
   Trash2,
   User as UserIcon,
+  X,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
@@ -51,8 +52,11 @@ interface Props {
   stages: PipelineStage[];
   canEditLead: boolean;
   canDeleteLead: boolean;
-  onEdit: () => void;
+  onEdit?: () => void;
   onLeadChange?: (lead: Lead) => void;
+  archiveLead?: () => Promise<void>;
+  restoreLead?: () => Promise<void>;
+  reopenLead?: () => Promise<void>;
 }
 
 const tempColors: Record<string, string> = {
@@ -87,6 +91,9 @@ export const LeadDetailsSheet = ({
   canDeleteLead,
   onEdit,
   onLeadChange,
+  archiveLead,
+  restoreLead,
+  reopenLead,
 }: Props) => {
   const [newNote, setNewNote] = useState("");
   const [contactMethod, setContactMethod] = useState("whatsapp");
@@ -114,6 +121,9 @@ export const LeadDetailsSheet = ({
 
   const stage = stages.find((item) => item.id === lead.stage_id);
   const funnel = funnels.find((item) => item.id === lead.funnel_id);
+  const isArchived = lead.is_archived;
+  const isWon = !!stage?.is_won;
+  const isLost = !!stage?.is_lost;
   const additionalContacts = parseAdditionalContacts(lead.additional_contacts);
   const sourceState = parseLeadSource(lead.source);
   const isOpeningCompanyLead = lead.company_maturity === "opening_company";
@@ -165,6 +175,7 @@ export const LeadDetailsSheet = ({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="center"
+        showCloseButton={false}
         className="flex h-[min(90vh,54rem)] w-[min(96vw,72rem)] max-w-none flex-col overflow-hidden rounded-2xl border p-0"
       >
         <div className="shrink-0 bg-gradient-header p-6 text-header-foreground">
@@ -180,25 +191,69 @@ export const LeadDetailsSheet = ({
                   </SheetDescription>
                 )}
               </div>
-              <div className="flex shrink-0 gap-1">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 text-header-foreground hover:bg-header-hover/10"
-                  onClick={onEdit}
-                  disabled={!canEditLead}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 text-header-foreground hover:bg-destructive/30"
-                  onClick={handleDelete}
-                  disabled={!canDeleteLead}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+              <div className="flex shrink-0 items-start gap-4">
+                <div className="flex flex-wrap items-center justify-end gap-1">
+                  {isArchived && restoreLead && canEditLead && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-8"
+                      onClick={() => void restoreLead()}
+                    >
+                      Restaurar
+                    </Button>
+                  )}
+                  {isArchived && reopenLead && canEditLead && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-8"
+                      onClick={() => void reopenLead()}
+                    >
+                      Reabrir
+                    </Button>
+                  )}
+                  {!isArchived && (isWon || isLost) && archiveLead && canEditLead && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-8"
+                      onClick={() => void archiveLead()}
+                    >
+                      Arquivar
+                    </Button>
+                  )}
+                  {onEdit && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-header-foreground hover:bg-header-hover/10"
+                      onClick={onEdit}
+                      disabled={!canEditLead}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-header-foreground hover:bg-destructive/30"
+                    onClick={handleDelete}
+                    disabled={!canDeleteLead}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <SheetClose asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-9 gap-2 rounded-full border border-white/20 bg-white/10 px-3 text-header-foreground hover:bg-white/20"
+                  >
+                    <X className="h-4 w-4" />
+                    Fechar
+                  </Button>
+                </SheetClose>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -206,6 +261,11 @@ export const LeadDetailsSheet = ({
               <Badge variant="outline" className={`${tempColors[lead.temperature]} border`}>
                 {tempLabel[lead.temperature]}
               </Badge>
+              {isArchived && (
+                <Badge variant="outline" className="border-border/70 bg-background/20 text-header-foreground">
+                  Arquivado
+                </Badge>
+              )}
               {lead.has_been_contacted && (
                 <Badge variant="outline" className="border-success/30 bg-success/20 text-success">
                   Contato realizado

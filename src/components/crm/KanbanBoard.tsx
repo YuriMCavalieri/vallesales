@@ -1,6 +1,6 @@
 import { Lead, PipelineStage, Profile } from "@/types/crm";
 import { LeadCard } from "./LeadCard";
-import { addLeadNoteEntry, useCreatePipelineStage, useDeletePipelineStage, useRenamePipelineStage, useUpdateLead } from "@/hooks/useLeads";
+import { addLeadNoteEntry, useArchiveLead, useCreatePipelineStage, useDeletePipelineStage, useRenamePipelineStage, useUpdateLead } from "@/hooks/useLeads";
 import { Check, Loader2, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -67,6 +67,7 @@ export const KanbanBoard = ({
   funnelId,
 }: Props) => {
   const update = useUpdateLead();
+  const archiveLead = useArchiveLead();
   const createStage = useCreatePipelineStage();
   const deleteStage = useDeletePipelineStage();
   const renameStage = useRenamePipelineStage();
@@ -80,6 +81,7 @@ export const KanbanBoard = ({
   const [newStageName, setNewStageName] = useState("");
   const [stagePendingDeletion, setStagePendingDeletion] = useState<PipelineStage | null>(null);
   const [lostLeadPending, setLostLeadPending] = useState<{ lead: Lead; targetStageId: string; stageName: string } | null>(null);
+  const [wonLeadPending, setWonLeadPending] = useState<{ lead: Lead; targetStageId: string; stageName: string } | null>(null);
   const [lossReason, setLossReason] = useState("");
   const [savingLostReason, setSavingLostReason] = useState(false);
   const [hoveredInsertSlotKey, setHoveredInsertSlotKey] = useState<string | null>(null);
@@ -108,17 +110,21 @@ export const KanbanBoard = ({
     return max;
   }, [stages, leadsByStage]);
 
-  const finalizeLeadStageChange = async (lead: Lead, stageId: string, lostReasonText?: string) => {
-    await update.mutateAsync({
+  const finalizeLeadStageChange = async (
+    lead: Lead,
+    stageId: string,
+    options?: { archiveAfter?: boolean; lostReasonText?: string },
+  ) => {
+    const updatedLead = await update.mutateAsync({
       id: lead.id,
       stage_id: stageId,
-      loss_reason: lostReasonText?.trim() || undefined,
+      loss_reason: options?.lostReasonText?.trim() || undefined,
     });
 
-    if (lostReasonText?.trim()) {
+    if (options?.lostReasonText?.trim()) {
       await addLeadNoteEntry({
         leadId: lead.id,
-        content: `Motivo da perda: ${lostReasonText.trim()}`,
+        content: `Motivo da perda: ${options.lostReasonText.trim()}`,
         userId: user?.id,
         activityDescription: "Motivo da perda registrado",
       });
@@ -127,6 +133,10 @@ export const KanbanBoard = ({
       qc.invalidateQueries({ queryKey: ["lead", lead.id] });
       qc.invalidateQueries({ queryKey: ["leads"] });
       qc.invalidateQueries({ queryKey: ["crm_notifications_feed"] });
+    }
+
+    if (options?.archiveAfter) {
+      await archiveLead.mutateAsync(updatedLead.id);
     }
   };
 
@@ -141,6 +151,10 @@ export const KanbanBoard = ({
     if (targetStage?.is_lost && !currentStage?.is_lost) {
       setLossReason("");
       setLostLeadPending({ lead, targetStageId: stageId, stageName: targetStage.name });
+      return;
+    }
+    if (targetStage?.is_won && !currentStage?.is_won) {
+      setWonLeadPending({ lead, targetStageId: stageId, stageName: targetStage.name });
       return;
     }
     await finalizeLeadStageChange(lead, stageId);
@@ -204,16 +218,33 @@ export const KanbanBoard = ({
     cancelCreateStage();
   };
 
-  const handleConfirmLostLead = async () => {
+  const handleConfirmLostLead = async (archiveAfter: boolean) => {
     if (!lostLeadPending || !lossReason.trim()) return;
 
     setSavingLostReason(true);
     try {
-      await finalizeLeadStageChange(lostLeadPending.lead, lostLeadPending.targetStageId, lossReason);
+      await finalizeLeadStageChange(lostLeadPending.lead, lostLeadPending.targetStageId, {
+        archiveAfter,
+        lostReasonText: lossReason,
+      });
       setLostLeadPending(null);
       setLossReason("");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Nao foi possivel mover o lead para perdido.");
+    } finally {
+      setSavingLostReason(false);
+    }
+  };
+
+  const handleConfirmWonLead = async (archiveAfter: boolean) => {
+    if (!wonLeadPending) return;
+
+    setSavingLostReason(true);
+    try {
+      await finalizeLeadStageChange(wonLeadPending.lead, wonLeadPending.targetStageId, { archiveAfter });
+      setWonLeadPending(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Nao foi possivel mover o lead para cliente.");
     } finally {
       setSavingLostReason(false);
     }
@@ -639,18 +670,21 @@ export const KanbanBoard = ({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Registrar motivo da perda</DialogTitle>
+            <DialogTitle>Marcar como perdido</DialogTitle>
             <DialogDescription>
-              {lostLeadPending
-                ? `O lead sera movido para "${lostLeadPending.stageName}". Informe o motivo para manter o historico comercial completo.`
-                : "Informe o motivo da perda deste lead."}
+              O lead sera movido para perdido. Escolha se deseja arquivar agora ou manter no funil por 3 dias.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              {lostLeadPending
+                ? `Informe o motivo da perda para "${lostLeadPending.stageName}".`
+                : "Informe o motivo da perda."}
+            </p>
             <Textarea
               rows={4}
-              placeholder="Ex.: achou o preco alto, nao obtive mais resposta, projeto foi adiado..."
+              placeholder="Ex.: preco alto, sem retorno, projeto adiado..."
               value={lossReason}
               onChange={(event) => setLossReason(event.target.value)}
               disabled={savingLostReason}
@@ -669,9 +703,55 @@ export const KanbanBoard = ({
             >
               Cancelar
             </Button>
-            <Button type="button" variant="accent" onClick={() => void handleConfirmLostLead()} disabled={savingLostReason || !lossReason.trim()}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void handleConfirmLostLead(false)}
+              disabled={savingLostReason || !lossReason.trim()}
+            >
               {savingLostReason && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Salvar e mover
+              Manter por 3 dias
+            </Button>
+            <Button
+              type="button"
+              variant="accent"
+              onClick={() => void handleConfirmLostLead(true)}
+              disabled={savingLostReason || !lossReason.trim()}
+            >
+              {savingLostReason && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Arquivar agora
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!wonLeadPending}
+        onOpenChange={(open) => {
+          if (!open && !savingLostReason) {
+            setWonLeadPending(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cliente fechado com arquivamento automatico</DialogTitle>
+            <DialogDescription>
+              Este cliente permanecera visivel no funil por 3 dias. Apos esse periodo, sera arquivado automaticamente. O historico continuara salvo e o contato permanecera na aba Contatos.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button type="button" variant="ghost" onClick={() => setWonLeadPending(null)} disabled={savingLostReason}>
+              Cancelar
+            </Button>
+            <Button type="button" variant="outline" onClick={() => void handleConfirmWonLead(false)} disabled={savingLostReason}>
+              {savingLostReason && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Entendi
+            </Button>
+            <Button type="button" variant="accent" onClick={() => void handleConfirmWonLead(true)} disabled={savingLostReason}>
+              {savingLostReason && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Arquivar agora
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -169,7 +169,10 @@ export type Database = {
           funnel_id: string
           has_been_contacted: boolean
           id: string
+          is_archived: boolean
+          last_active_stage_id: string | null
           loss_reason: string | null
+          lost_at: string | null
           monthly_invoice_count: string | null
           monthly_revenue_fiscal: string | null
           monthly_revenue_managerial: string | null
@@ -179,6 +182,8 @@ export type Database = {
           phone: string | null
           position: number
           payroll_gross_value: string | null
+          archived_at: string | null
+          archived_by: string | null
           segment: string | null
           segment_other: string | null
           source: string | null
@@ -190,10 +195,13 @@ export type Database = {
           uf: string | null
           updated_at: string
           updated_by: string | null
+          won_at: string | null
         }
         Insert: {
           accounting_pain_points?: string | null
           additional_contacts?: Json
+          archived_at?: string | null
+          archived_by?: string | null
           bank_account_count?: string | null
           bank_accounts_split?: string | null
           city?: string | null
@@ -213,7 +221,10 @@ export type Database = {
           funnel_id: string
           has_been_contacted?: boolean
           id?: string
+          is_archived?: boolean
+          last_active_stage_id?: string | null
           loss_reason?: string | null
+          lost_at?: string | null
           monthly_invoice_count?: string | null
           monthly_revenue_fiscal?: string | null
           monthly_revenue_managerial?: string | null
@@ -234,10 +245,13 @@ export type Database = {
           uf?: string | null
           updated_at?: string
           updated_by?: string | null
+          won_at?: string | null
         }
         Update: {
           accounting_pain_points?: string | null
           additional_contacts?: Json
+          archived_at?: string | null
+          archived_by?: string | null
           bank_account_count?: string | null
           bank_accounts_split?: string | null
           city?: string | null
@@ -257,7 +271,10 @@ export type Database = {
           funnel_id?: string
           has_been_contacted?: boolean
           id?: string
+          is_archived?: boolean
+          last_active_stage_id?: string | null
           loss_reason?: string | null
+          lost_at?: string | null
           monthly_invoice_count?: string | null
           monthly_revenue_fiscal?: string | null
           monthly_revenue_managerial?: string | null
@@ -278,6 +295,7 @@ export type Database = {
           uf?: string | null
           updated_at?: string
           updated_by?: string | null
+          won_at?: string | null
         }
         Relationships: [
           {
