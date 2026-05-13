@@ -54,6 +54,7 @@ import {
   Zap,
   Building2,
   ChevronDown,
+  ChevronUp,
   Check,
   Lock,
   Pencil,
@@ -91,9 +92,11 @@ const Index = () => {
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
   const [onlyMine, setOnlyMine] = useState(false);
+  const [topPanelExpanded, setTopPanelExpanded] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [defaultStage, setDefaultStage] = useState<string | undefined>();
+  const [formSessionKey, setFormSessionKey] = useState(0);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [funnelDialogOpen, setFunnelDialogOpen] = useState(false);
@@ -179,11 +182,14 @@ const Index = () => {
   const openNew = (stageId?: string) => {
     setEditLead(null);
     setDefaultStage(stageId);
+    setFormSessionKey((current) => current + 1);
     setFormOpen(true);
   };
 
   const openEdit = (lead: Lead) => {
     setEditLead(lead);
+    setDefaultStage(undefined);
+    setFormSessionKey((current) => current + 1);
     setFormOpen(true);
   };
 
@@ -522,128 +528,169 @@ const Index = () => {
           )}
         </div>
 
-        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <StatCard icon={<TrendingUp className="h-4 w-4" />} label="Em aberto" value={String(stats.count)} tone="primary" />
-          <StatCard icon={<DollarSign className="h-4 w-4" />} label="Pipeline" value={formatCurrency(stats.pipelineValue)} tone="accent" />
-          <StatCard icon={<Thermometer className="h-4 w-4" />} label="Fechados" value={formatCurrency(stats.wonValue)} tone="success" />
-          <StatCard
-            icon={<Zap className="h-4 w-4" />}
-            label="Acoes hoje"
-            value={String(stats.actionToday)}
-            tone={stats.actionToday > 0 ? "accent" : "muted"}
-            clickable
-            active={statusFilter === "acao_hoje"}
-            onClick={() => setStatusFilter(statusFilter === "acao_hoje" ? "todos" : "acao_hoje")}
-          />
-          <StatCard
-            icon={<AlertTriangle className="h-4 w-4" />}
-            label="Atrasados"
-            value={String(stats.overdue)}
-            tone={stats.overdue > 0 ? "danger" : "muted"}
-            clickable
-            active={statusFilter === "atrasados"}
-            onClick={() => setStatusFilter(statusFilter === "atrasados" ? "todos" : "atrasados")}
-          />
-        </div>
+        <div className="mb-4">
+          {topPanelExpanded ? (
+            <div className="space-y-4">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setTopPanelExpanded(false)}
+                  className={cn(
+                    "absolute right-0 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border bg-background transition-all",
+                    "border-[#b07a55]/70 text-[#b07a55] shadow-xs hover:border-[#9f6c49] hover:bg-[#f7ede5] hover:shadow-card",
+                  )}
+                  aria-label="Recolher indicadores e filtros"
+                  title="Recolher indicadores e filtros"
+                >
+                  <ChevronUp className="h-5 w-5" />
+                </button>
 
-        <div className="flex flex-col gap-2 md:flex-row">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, empresa, e-mail, telefone ou cidade..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="h-9 border-border bg-background pl-8 focus-visible:ring-accent/40"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Limpar busca"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
-          </div>
+                <div className="grid grid-cols-2 gap-2.5 pr-14 sm:grid-cols-3 lg:grid-cols-5">
+                <StatCard icon={<TrendingUp className="h-4 w-4" />} label="Em aberto" value={String(stats.count)} tone="primary" />
+                <StatCard icon={<DollarSign className="h-4 w-4" />} label="Pipeline" value={formatCurrency(stats.pipelineValue)} tone="accent" />
+                <StatCard icon={<Thermometer className="h-4 w-4" />} label="Fechados" value={formatCurrency(stats.wonValue)} tone="success" />
+                <StatCard
+                  icon={<Zap className="h-4 w-4" />}
+                  label="Acoes hoje"
+                  value={String(stats.actionToday)}
+                  tone={stats.actionToday > 0 ? "accent" : "muted"}
+                  clickable
+                  active={statusFilter === "acao_hoje"}
+                  onClick={() => setStatusFilter(statusFilter === "acao_hoje" ? "todos" : "acao_hoje")}
+                />
+                <StatCard
+                  icon={<AlertTriangle className="h-4 w-4" />}
+                  label="Atrasados"
+                  value={String(stats.overdue)}
+                  tone={stats.overdue > 0 ? "danger" : "muted"}
+                  clickable
+                  active={statusFilter === "atrasados"}
+                  onClick={() => setStatusFilter(statusFilter === "atrasados" ? "todos" : "atrasados")}
+                />
+                </div>
+              </div>
 
-          <button
-            type="button"
-            onClick={() => setOnlyMine((value) => !value)}
-            className={cn(
-              "inline-flex h-9 shrink-0 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-all",
-              onlyMine
-                ? "border-accent bg-accent text-accent-foreground shadow-sm"
-                : "border-border bg-background text-foreground hover:border-accent/40 hover:text-accent",
-            )}
-            title="Mostrar somente leads em que sou responsavel"
-          >
-            <UserCheck className="h-4 w-4" />
-            <span className="hidden md:inline">Meus leads</span>
-            <Switch checked={onlyMine} className="pointer-events-none -mr-1 scale-75" />
-          </button>
+              <div className="flex flex-col gap-2 md:flex-row">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, empresa, e-mail, telefone ou cidade..."
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    className="h-9 border-border bg-background pl-8 focus-visible:ring-accent/40"
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch("")}
+                      className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      aria-label="Limpar busca"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
 
-          <Select value={ownerFilter} onValueChange={setOwnerFilter} disabled={onlyMine}>
-            <SelectTrigger className="h-9 bg-background md:w-56">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <SelectValue placeholder="Responsavel" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os responsaveis</SelectItem>
-              <SelectItem value="none">Sem responsavel</SelectItem>
-              {(profiles.data ?? []).map((profile) => (
-                <SelectItem key={profile.id} value={profile.id}>
-                  {profile.full_name || profile.email}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                <button
+                  type="button"
+                  onClick={() => setOnlyMine((value) => !value)}
+                  className={cn(
+                    "inline-flex h-9 shrink-0 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-all",
+                    onlyMine
+                      ? "border-accent bg-accent text-accent-foreground shadow-sm"
+                      : "border-border bg-background text-foreground hover:border-accent/40 hover:text-accent",
+                  )}
+                  title="Mostrar somente leads em que sou responsavel"
+                >
+                  <UserCheck className="h-4 w-4" />
+                  <span className="hidden md:inline">Meus leads</span>
+                  <Switch checked={onlyMine} className="pointer-events-none -mr-1 scale-75" />
+                </button>
 
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
-            <SelectTrigger className="h-9 bg-background md:w-52">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os status</SelectItem>
-              <SelectItem value="acao_hoje">Acoes hoje</SelectItem>
-              <SelectItem value="atrasados">Follow-up atrasado</SelectItem>
-              <SelectItem value="follow_hoje">Follow-up hoje</SelectItem>
-              <SelectItem value="sem_contato">Sem contato</SelectItem>
-            </SelectContent>
-          </Select>
+                <Select value={ownerFilter} onValueChange={setOwnerFilter} disabled={onlyMine}>
+                  <SelectTrigger className="h-9 bg-background md:w-56">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Responsavel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os responsaveis</SelectItem>
+                    <SelectItem value="none">Sem responsavel</SelectItem>
+                    {(profiles.data ?? []).map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.full_name || profile.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-muted-foreground hover:text-foreground">
-              <X className="mr-1 h-3.5 w-3.5" /> Limpar
-            </Button>
+                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
+                  <SelectTrigger className="h-9 bg-background md:w-52">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os status</SelectItem>
+                    <SelectItem value="acao_hoje">Acoes hoje</SelectItem>
+                    <SelectItem value="atrasados">Follow-up atrasado</SelectItem>
+                    <SelectItem value="follow_hoje">Follow-up hoje</SelectItem>
+                    <SelectItem value="sem_contato">Sem contato</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-muted-foreground hover:text-foreground">
+                    <X className="mr-1 h-3.5 w-3.5" /> Limpar
+                  </Button>
+                )}
+
+              </div>
+
+              {hasActiveFilters && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>{filteredLeads.length} lead(s) encontrado(s)</span>
+                  {statusFilter === "atrasados" && (
+                    <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-destructive">
+                      Atrasados
+                    </Badge>
+                  )}
+                  {statusFilter === "sem_contato" && (
+                    <Badge variant="outline" className="border-warning/30 bg-warning/10 text-warning">
+                      Sem contato
+                    </Badge>
+                  )}
+                  {statusFilter === "follow_hoje" && (
+                    <Badge variant="outline" className="border-accent/30 bg-accent/10 text-accent">
+                      Follow-up hoje
+                    </Badge>
+                  )}
+                  {statusFilter === "acao_hoje" && (
+                    <Badge variant="outline" className="border-accent/30 bg-accent/10 text-accent">
+                      Acoes hoje
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setTopPanelExpanded(true)}
+              className={cn(
+                "flex h-10 w-full items-center justify-between gap-3 rounded-xl border bg-card px-3 text-left shadow-sm transition-all sm:px-4",
+                "border-[#b07a55]/55 ring-1 ring-[#b07a55]/15 hover:border-[#9f6c49] hover:shadow-card",
+              )}
+              aria-expanded={topPanelExpanded}
+              aria-label="Expandir indicadores e filtros"
+            >
+              <span className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/80">
+                Indicadores e filtros recolhidos
+              </span>
+              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#b07a55] text-white shadow-sm">
+                <ChevronDown className="h-3.5 w-3.5" />
+              </span>
+            </button>
           )}
         </div>
-
-        {hasActiveFilters && (
-          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{filteredLeads.length} lead(s) encontrado(s)</span>
-            {statusFilter === "atrasados" && (
-              <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-destructive">
-                Atrasados
-              </Badge>
-            )}
-            {statusFilter === "sem_contato" && (
-              <Badge variant="outline" className="border-warning/30 bg-warning/10 text-warning">
-                Sem contato
-              </Badge>
-            )}
-            {statusFilter === "follow_hoje" && (
-              <Badge variant="outline" className="border-accent/30 bg-accent/10 text-accent">
-                Follow-up hoje
-              </Badge>
-            )}
-            {statusFilter === "acao_hoje" && (
-              <Badge variant="outline" className="border-accent/30 bg-accent/10 text-accent">
-                Acoes hoje
-              </Badge>
-            )}
-          </div>
-        )}
       </div>
 
       <main className="flex-1 overflow-hidden px-4 py-4 md:px-6">
@@ -700,6 +747,7 @@ const Index = () => {
       </main>
 
       <LeadFormDialog
+        key={formSessionKey}
         open={formOpen}
         onOpenChange={setFormOpen}
         lead={editLead}
@@ -832,15 +880,15 @@ const StatCard = ({
   <Card
     onClick={clickable ? onClick : undefined}
     className={cn(
-      "flex items-center gap-3 border-border/70 p-3.5 shadow-xs transition-all duration-200",
+      "flex items-center gap-2 border-border/70 px-3 py-2.5 shadow-xs transition-all duration-200",
       clickable && "cursor-pointer hover:-translate-y-0.5 hover:border-border hover:shadow-card",
       active && "border-accent/40 ring-2 ring-accent/40",
     )}
   >
-    <div className={`rounded-lg p-2.5 ${toneStyles[tone]}`}>{icon}</div>
+    <div className={`rounded-lg p-1.5 ${toneStyles[tone]}`}>{icon}</div>
     <div className="min-w-0">
       <p className="truncate text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="truncate text-base font-bold tabular-nums text-foreground md:text-lg">{value}</p>
+      <p className="truncate text-sm font-bold tabular-nums text-foreground md:text-[0.98rem]">{value}</p>
     </div>
   </Card>
 );

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ import { CONTACT_METHOD_OPTIONS, SOURCE_OPTIONS, TEMPERATURE_OPTIONS, UF_OPTIONS
 import {
   formatCnpj,
   formatPhone,
+  getServiceTypeOptionsForFunnel,
   isValidLeadPhone,
   LeadAdditionalContact,
   parseAdditionalContacts,
@@ -22,7 +23,6 @@ import {
   SEGMENT_OPTIONS,
   serializeAdditionalContacts,
   serializeLeadSource,
-  SERVICE_TYPE_OPTIONS,
   TAX_REGIME_OPTIONS,
 } from "@/lib/lead-form";
 import { Loader2, Plus, Trash2, UserCheck } from "lucide-react";
@@ -208,6 +208,27 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
   const ownerOptions = profiles.filter(
     (profile) => assignableIds.has(profile.id) || profile.id === form.owner_id,
   );
+  const selectedFunnel = useMemo(
+    () => funnels.find((funnel) => funnel.id === form.funnel_id) ?? null,
+    [form.funnel_id, funnels],
+  );
+  const serviceTypeOptions = useMemo(
+    () => getServiceTypeOptionsForFunnel(selectedFunnel?.name),
+    [selectedFunnel?.name],
+  );
+  const allowedServiceTypeSet = useMemo(
+    () => new Set<string>(serviceTypeOptions),
+    [serviceTypeOptions],
+  );
+
+  useEffect(() => {
+    setForm((current) => {
+      const filteredServiceTypes = current.service_types.filter((serviceType) => allowedServiceTypeSet.has(serviceType));
+      return filteredServiceTypes.length === current.service_types.length
+        ? current
+        : { ...current, service_types: filteredServiceTypes };
+    });
+  }, [allowedServiceTypeSet]);
 
   const patchForm = (patch: Partial<FormState>) => setForm((current) => ({ ...current, ...patch }));
 
@@ -543,26 +564,6 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
                 </Select>
               </FieldBlock>
 
-              <FieldBlock>
-                <Label>CNPJ</Label>
-                <Input
-                  inputMode="numeric"
-                  placeholder="00.000.000/0000-00"
-                  value={form.cnpj}
-                  onChange={(event) => patchForm({ cnpj: formatCnpj(event.target.value) })}
-                />
-              </FieldBlock>
-
-              <FieldBlock>
-                <Label>Quantidade total de funcionarios</Label>
-                <Input
-                  inputMode="numeric"
-                  placeholder="Ex.: 12"
-                  value={form.employee_count}
-                  onChange={(event) => patchForm({ employee_count: event.target.value })}
-                />
-              </FieldBlock>
-
               {form.source === "Indicacao" && (
                 <FieldBlock error={errors.indication_by}>
                   <Label>Indicacao por</Label>
@@ -828,6 +829,16 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FieldBlock>
+                <Label>CNPJ</Label>
+                <Input
+                  inputMode="numeric"
+                  placeholder="00.000.000/0000-00"
+                  value={form.cnpj}
+                  onChange={(event) => patchForm({ cnpj: formatCnpj(event.target.value) })}
+                />
+              </FieldBlock>
+
+              <FieldBlock>
                 <Label>Regime tributario atual</Label>
                 <Select value={form.tax_regime || undefined} onValueChange={(value) => patchForm({ tax_regime: value })}>
                   <SelectTrigger>
@@ -941,7 +952,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
               <FieldBlock className="md:col-span-2">
                 <Label>Tipo de servico</Label>
                 <div className="grid grid-cols-1 gap-3 rounded-lg border border-border/70 p-4 md:grid-cols-2">
-                  {SERVICE_TYPE_OPTIONS.map((serviceType) => {
+                  {serviceTypeOptions.map((serviceType) => {
                     const checked = form.service_types.includes(serviceType);
                     return (
                       <label

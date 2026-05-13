@@ -33,7 +33,47 @@ export const SERVICE_TYPE_OPTIONS = [
   "Gestao Tributaria",
   "Legalizacao de Empresas",
   "BPO Financeiro",
+  "Coworking e Sede Virtual",
+  "Coworking - Escritório Virtual",
+  "Coworking - Sala Privativa",
+  "Coworking - Estação Compartilhada",
+  "Coworking - Salas de Reunião",
 ] as const;
+
+export const HIDDEN_FORM_SERVICE_TYPE_OPTIONS = [
+  "Coworking e Sede Virtual",
+  "Coworking - Escritório Virtual",
+  "Coworking - Sala Privativa",
+  "Coworking - Estação Compartilhada",
+  "Coworking - Salas de Reunião",
+] as const;
+
+const coworkingServiceTypeSet = new Set<string>(HIDDEN_FORM_SERVICE_TYPE_OPTIONS);
+const funnelsWithCoworkingServices = new Set([
+  "cwk santa efigenia",
+  "cwk savassi",
+  "cwk lourdes",
+]);
+
+export const FORM_SERVICE_TYPE_OPTIONS = SERVICE_TYPE_OPTIONS.filter(
+  (serviceType) => !coworkingServiceTypeSet.has(serviceType),
+);
+
+const normalizeFunnelName = (value: string | null | undefined) =>
+  (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+
+export const funnelSupportsCoworkingServices = (funnelName: string | null | undefined) =>
+  funnelsWithCoworkingServices.has(normalizeFunnelName(funnelName));
+
+export const getServiceTypeOptionsForFunnel = (funnelName: string | null | undefined) =>
+  funnelSupportsCoworkingServices(funnelName)
+    ? SERVICE_TYPE_OPTIONS.filter((serviceType) => coworkingServiceTypeSet.has(serviceType))
+    : SERVICE_TYPE_OPTIONS.filter((serviceType) => !coworkingServiceTypeSet.has(serviceType));
 
 export const COMPANY_MATURITY_OPTIONS = [
   { value: "existing_company", label: "Ja tenho uma empresa" },

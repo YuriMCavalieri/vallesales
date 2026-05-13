@@ -16,8 +16,8 @@ import {
   COMPANY_MATURITY_OPTIONS,
   formatCnpj,
   formatPhone,
+  FORM_SERVICE_TYPE_OPTIONS,
   isValidLeadPhone,
-  SERVICE_TYPE_OPTIONS,
   TAX_REGIME_OPTIONS,
 } from "@/lib/lead-form";
 import { cn } from "@/lib/utils";
@@ -518,7 +518,7 @@ const PublicLeadForm = () => {
                         </PopoverTrigger>
                         <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-2">
                           <div className="space-y-1">
-                            {SERVICE_TYPE_OPTIONS.map((serviceType) => {
+                            {FORM_SERVICE_TYPE_OPTIONS.map((serviceType) => {
                               const checked = form.service_types.includes(serviceType);
                               return (
                                 <label
