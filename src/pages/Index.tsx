@@ -285,7 +285,7 @@ const Index = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       <AppHeader active="funil" />
 
       <div className="px-4 py-5 border-b border-border bg-card md:px-6">
@@ -672,37 +672,39 @@ const Index = () => {
 
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => setTopPanelExpanded(true)}
-              className={cn(
-                "flex h-10 w-full items-center justify-between gap-3 rounded-xl border bg-card px-3 text-left shadow-sm transition-all sm:px-4",
-                "border-[#b07a55]/55 ring-1 ring-[#b07a55]/15 hover:border-[#9f6c49] hover:shadow-card",
-              )}
-              aria-expanded={topPanelExpanded}
-              aria-label="Expandir indicadores e filtros"
-            >
-              <span className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/80">
-                Indicadores e filtros recolhidos
-              </span>
-              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#b07a55] text-white shadow-sm">
-                <ChevronDown className="h-3.5 w-3.5" />
-              </span>
-            </button>
+            <div className="flex justify-start">
+              <button
+                type="button"
+                onClick={() => setTopPanelExpanded(true)}
+                className={cn(
+                  "inline-flex h-10 items-center gap-2 rounded-xl border bg-card px-3 text-left shadow-sm transition-all sm:px-4",
+                  "border-[#b07a55]/55 ring-1 ring-[#b07a55]/15 hover:border-[#9f6c49] hover:shadow-card",
+                )}
+                aria-expanded={topPanelExpanded}
+                aria-label="Expandir indicadores e filtros"
+              >
+                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/80">
+                  Indicadores e filtros recolhidos
+                </span>
+                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#b07a55] text-white shadow-sm">
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </span>
+              </button>
+            </div>
           )}
         </div>
       </div>
 
-      <main className="flex-1 overflow-hidden px-4 py-4 md:px-6">
-        <div className="flex h-full flex-col gap-4">
-          <div className="min-h-0 flex-1">
+      <main className="flex-1 px-4 py-4 md:px-6">
+        <div className="flex flex-col gap-4">
+          <div className="flex-1">
             {loading ? (
-              <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-muted-foreground">
                 <Loader2 className="h-8 w-8 animate-spin text-accent" />
                 <p className="text-sm">Carregando dados...</p>
               </div>
             ) : !activeFunnelId ? (
-              <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center gap-3 text-center">
+              <div className="mx-auto flex min-h-[320px] max-w-md flex-col items-center justify-center gap-3 text-center">
                 <AlertTriangle className="h-10 w-10 text-warning" />
                 <h3 className="text-lg font-semibold">Nenhum funil disponivel</h3>
                 <p className="text-sm text-muted-foreground">
@@ -710,7 +712,7 @@ const Index = () => {
                 </p>
               </div>
             ) : (stages.isError || leads.isError) ? (
-              <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center gap-3 text-center">
+              <div className="mx-auto flex min-h-[320px] max-w-md flex-col items-center justify-center gap-3 text-center">
                 <AlertTriangle className="h-10 w-10 text-destructive" />
                 <h3 className="text-lg font-semibold">Nao foi possivel carregar os dados</h3>
                 <p className="text-sm text-muted-foreground">
