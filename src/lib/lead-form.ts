@@ -76,14 +76,14 @@ export const getServiceTypeOptionsForFunnel = (funnelName: string | null | undef
     : SERVICE_TYPE_OPTIONS.filter((serviceType) => !coworkingServiceTypeSet.has(serviceType));
 
 export const COMPANY_MATURITY_OPTIONS = [
-  { value: "existing_company", label: "Ja tenho uma empresa" },
+  { value: "existing_company", label: "Já tenho uma empresa" },
   { value: "opening_company", label: "Quero abrir uma empresa" },
 ] as const;
 
 export type CompanyMaturity = (typeof COMPANY_MATURITY_OPTIONS)[number]["value"];
 
 export const COMPANY_MATURITY_LABELS: Record<CompanyMaturity, string> = {
-  existing_company: "Ja tenho uma empresa",
+  existing_company: "Já tenho uma empresa",
   opening_company: "Quero abrir uma empresa",
 };
 

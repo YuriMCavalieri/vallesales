@@ -33,9 +33,9 @@ const Configuracoes = () => {
       <AppHeader active="configuracoes" />
 
       <div className="border-b border-border bg-card px-4 py-5 md:px-6">
-        <h2 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">Configuracoes</h2>
+        <h2 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">Configurações</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Preferencias da conta, aparencia do sistema e administracao de acesso
+          Preferências da conta, aparência do sistema e administração de acesso
         </p>
       </div>
 
@@ -53,7 +53,7 @@ const Configuracoes = () => {
                 to="/configuracoes/aparencia"
                 active={section === "appearance"}
                 icon={<Palette className="h-4 w-4" />}
-                label="Aparencia"
+                label="Aparência"
               />
               {perms.canManageTeam && (
                 <SettingsNavItem
@@ -132,7 +132,7 @@ const ThemePreference = () => {
   return (
     <section className="space-y-6">
       <div>
-        <h3 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">Aparencia</h3>
+        <h3 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">Aparência</h3>
         <p className="mt-0.5 text-sm text-muted-foreground">
           Escolha como a interface deve aparecer neste navegador.
         </p>
@@ -142,7 +142,7 @@ const ThemePreference = () => {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-medium text-foreground">Tema do sistema</p>
-            <p className="mt-0.5 text-sm text-muted-foreground">A preferencia fica salva neste navegador.</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">A preferência fica salva neste navegador.</p>
           </div>
           <ToggleGroup
             type="single"
@@ -167,7 +167,7 @@ const ThemePreference = () => {
           <div>
             <p className="font-medium text-foreground">Tamanho e densidade da interface</p>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Isso ajuda quem usa o navegador com zoom reduzido para ver mais elementos, mas ainda quer leitura confortavel.
+              Isso ajuda quem usa o navegador com zoom reduzido para ver mais elementos, mas ainda quer leitura confortável.
             </p>
           </div>
 
@@ -181,10 +181,10 @@ const ThemePreference = () => {
               Compacto
             </ToggleGroupItem>
             <ToggleGroupItem value="default" aria-label="Usar modo padrao" className="px-3">
-              Padrao
+              Padrão
             </ToggleGroupItem>
             <ToggleGroupItem value="comfortable" aria-label="Usar modo confortavel" className="px-3">
-              Confortavel
+              Confortável
             </ToggleGroupItem>
           </ToggleGroup>
 
@@ -198,15 +198,15 @@ const ThemePreference = () => {
             />
             <ScalePreviewCard
               value="default"
-              title="Padrao"
-              description="Mantem o equilibrio atual entre leitura e quantidade de informacao."
+              title="Padrão"
+              description="Mantém o equilíbrio atual entre leitura e quantidade de informação."
               active={scale === "default"}
               onClick={handleScaleChange}
             />
             <ScalePreviewCard
               value="comfortable"
-              title="Confortavel"
-              description="Aumenta texto, icones e espacos para melhorar a leitura com zoom baixo."
+              title="Confortável"
+              description="Aumenta texto, ícones e espaços para melhorar a leitura com zoom baixo."
               active={scale === "comfortable"}
               onClick={handleScaleChange}
             />

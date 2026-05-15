@@ -125,7 +125,7 @@ const Dashboard = () => {
         </p>
         {activeFunnel && (
           <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Negocio ativo: {activeFunnel.name}
+            Negócio ativo: {activeFunnel.name}
           </p>
         )}
       </div>
@@ -139,7 +139,7 @@ const Dashboard = () => {
           <Card className="mx-auto max-w-2xl p-8 text-center">
             <h3 className="text-lg font-semibold text-foreground">Nenhum funil disponivel</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Seu usuario nao possui acesso a um funil ativo no momento.
+              Seu usuário não possui acesso a um funil ativo no momento.
             </p>
           </Card>
         </main>

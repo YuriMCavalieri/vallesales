@@ -79,9 +79,12 @@ const contactKindStyles: Record<ContactDisplayKind, string> = {
   mixed: "bg-accent/10 text-accent border-accent/25",
 };
 
+const allSituationOptions: ContactSituation[] = ["open", "lost", "won"];
+
 const normalizeText = (value?: string | null) => (value ?? "").trim().toLowerCase();
 const normalizePhone = (value?: string | null) => digitsOnly(value ?? "");
 const ALL_FUNNELS_VALUE = "__all_funnels__";
+const ALL_SITUATIONS_VALUE = "__all_situations__";
 const situationPriority: Record<ContactSituation, number> = { won: 3, open: 2, lost: 1 };
 const contactKindPriority: Record<ContactKind, number> = { primary: 2, additional: 1 };
 
@@ -305,8 +308,10 @@ const Contacts = () => {
   const { activeFunnelId, funnels, loading: funnelLoading } = useActiveFunnel();
   const [search, setSearch] = useState("");
   const [situationFilter, setSituationFilter] = useState<SituationFilter>("all");
+  const [selectedSituations, setSelectedSituations] = useState<ContactSituation[]>([...allSituationOptions]);
   const [selectedFunnelIds, setSelectedFunnelIds] = useState<string[]>([]);
   const [funnelFilterOpen, setFunnelFilterOpen] = useState(false);
+  const [situationFilterOpen, setSituationFilterOpen] = useState(false);
   const accessibleFunnelIds = useMemo(() => funnels.map((funnel) => funnel.id), [funnels]);
   const hasAvailableFunnels = accessibleFunnelIds.length > 0;
   const leads = useLeads(null, hasAvailableFunnels, { archived: "all" });
@@ -327,6 +332,7 @@ const Contacts = () => {
   }, [accessibleFunnelIds, activeFunnelId]);
 
   const allFunnelsSelected = hasAvailableFunnels && selectedFunnelIds.length === accessibleFunnelIds.length;
+  const allSituationsSelected = selectedSituations.length === allSituationOptions.length;
   const selectedFunnels = useMemo(
     () => funnels.filter((funnel) => selectedFunnelIds.includes(funnel.id)),
     [funnels, selectedFunnelIds],
@@ -335,8 +341,7 @@ const Contacts = () => {
   const toggleFunnel = (funnelId: string) => {
     setSelectedFunnelIds((current) => {
       if (current.includes(funnelId)) {
-        const next = current.filter((id) => id !== funnelId);
-        return next.length === 0 ? current : next;
+        return current.filter((id) => id !== funnelId);
       }
 
       return [...current, funnelId];
@@ -345,35 +350,68 @@ const Contacts = () => {
 
   const handleFunnelSelection = (value: string) => {
     if (value === ALL_FUNNELS_VALUE) {
-      setSelectedFunnelIds([...accessibleFunnelIds]);
+      setSelectedFunnelIds((current) =>
+        current.length === accessibleFunnelIds.length ? [] : [...accessibleFunnelIds],
+      );
       return;
     }
 
     toggleFunnel(value);
   };
 
+  const toggleSituation = (situation: ContactSituation) => {
+    setSelectedSituations((current) => (
+      current.includes(situation)
+        ? current.filter((item) => item !== situation)
+        : [...current, situation]
+    ));
+  };
+
+  const handleSituationSelection = (value: string) => {
+    if (value === ALL_SITUATIONS_VALUE) {
+      setSelectedSituations((current) => (
+        current.length === allSituationOptions.length ? [] : [...allSituationOptions]
+      ));
+      return;
+    }
+
+    toggleSituation(value as ContactSituation);
+  };
+
   const funnelFilterLabel = useMemo(() => {
     if (!hasAvailableFunnels) return "Nenhum funil";
+    if (selectedFunnelIds.length === 0) return "Nenhum funil selecionado";
     if (allFunnelsSelected) return "Todos os funis";
     if (selectedFunnels.length === 1) return selectedFunnels[0]?.name ?? "1 funil";
     return `${selectedFunnels.length} funis selecionados`;
-  }, [allFunnelsSelected, hasAvailableFunnels, selectedFunnels]);
+  }, [allFunnelsSelected, hasAvailableFunnels, selectedFunnelIds.length, selectedFunnels]);
+
+  const situationFilterLabel = useMemo(() => {
+    if (selectedSituations.length === 0) return "Nenhuma situação";
+    if (allSituationsSelected) return "Todas as situações";
+    if (selectedSituations.length === 1) return situationLabels[selectedSituations[0]];
+    return `${selectedSituations.length} situações`;
+  }, [allSituationsSelected, selectedSituations]);
 
   const funnelDescription = useMemo(() => {
     if (!hasAvailableFunnels) {
-      return "Lista consolidada dos contatos dos negocios.";
+      return "Lista consolidada dos contatos dos negócios.";
+    }
+
+    if (selectedFunnelIds.length === 0) {
+      return "Selecione ao menos um funil para exibir contatos.";
     }
 
     if (allFunnelsSelected) {
-      return "Contatos de todos os funis aos quais voce tem acesso.";
+      return "Contatos de todos os funis aos quais você tem acesso.";
     }
 
     if (selectedFunnels.length === 1) {
-      return `Contatos vinculados ao negocio ${selectedFunnels[0]?.name}.`;
+      return `Contatos vinculados ao negócio ${selectedFunnels[0]?.name}.`;
     }
 
     return `Contatos vinculados a ${selectedFunnels.length} funis selecionados.`;
-  }, [allFunnelsSelected, hasAvailableFunnels, selectedFunnels]);
+  }, [allFunnelsSelected, hasAvailableFunnels, selectedFunnelIds.length, selectedFunnels]);
 
   const sourceRows = useMemo(() => {
     const funnelsById = new Map(funnels.map((funnel) => [funnel.id, funnel.name]));
@@ -392,7 +430,7 @@ const Contacts = () => {
         const stageStatus = stageStatusByFunnel.get(lead.funnel_id);
         return buildRowsForLead(
           lead,
-          funnelsById.get(lead.funnel_id) ?? "Funil nao identificado",
+          funnelsById.get(lead.funnel_id) ?? "Funil não identificado",
           stageStatus?.wonStageId,
           stageStatus?.lostStageId,
         );
@@ -403,8 +441,10 @@ const Contacts = () => {
   const scopedSourceRows = useMemo(() => {
     const allowedFunnels = new Set(selectedFunnelIds);
 
+    if (allowedFunnels.size === 0) return [];
+
     return sourceRows.filter((row) => {
-      if (allowedFunnels.size > 0 && !allowedFunnels.has(row.funnelId)) return false;
+      if (!allowedFunnels.has(row.funnelId)) return false;
       return true;
     });
   }, [sourceRows, selectedFunnelIds]);
@@ -416,9 +456,10 @@ const Contacts = () => {
 
   const filteredRows = useMemo(() => {
     const query = normalizeText(search);
+    const allowedSituations = new Set(selectedSituations);
 
     return scopedRows.filter((row) => {
-      if (situationFilter !== "all" && row.situation !== situationFilter) return false;
+      if (allowedSituations.size === 0 || !allowedSituations.has(row.situation)) return false;
 
       if (!query) return true;
       const haystack = [
@@ -431,7 +472,7 @@ const Contacts = () => {
         row.linkedEmails.join(" "),
         situationLabels[row.situation],
         contactKindLabels[row.contactKind],
-        row.linkedLeadCount > 1 ? `${row.linkedLeadCount} negocios` : "",
+        row.linkedLeadCount > 1 ? `${row.linkedLeadCount} negócios` : "",
       ]
         .filter(Boolean)
         .join(" ")
@@ -439,11 +480,11 @@ const Contacts = () => {
 
       return haystack.includes(query);
     });
-  }, [scopedRows, search, situationFilter]);
+  }, [scopedRows, search, selectedSituations]);
 
   const loading = funnelLoading || leads.isLoading || stages.isLoading;
   const error = (leads.error as Error | null) ?? (stages.error as Error | null);
-  const hasActiveFilters = !!search.trim() || situationFilter !== "all" || !allFunnelsSelected;
+  const hasActiveFilters = !!search.trim() || !allSituationsSelected || !allFunnelsSelected;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -523,7 +564,7 @@ const Contacts = () => {
                     <p className="text-xs text-muted-foreground">
                       {accessibleFunnelIds.length === 1
                         ? "Equivale ao unico funil disponivel."
-                        : `Inclui os ${accessibleFunnelIds.length} funis disponiveis para voce.`}
+                        : `Inclui os ${accessibleFunnelIds.length} funis disponíveis para você.`}
                     </p>
                   </div>
                 </button>
@@ -553,9 +594,9 @@ const Contacts = () => {
             </PopoverContent>
           </Popover>
 
-          <Select value={situationFilter} onValueChange={(value) => setSituationFilter(value as SituationFilter)}>
+          {false && <Select value={situationFilter} onValueChange={(value) => setSituationFilter(value as SituationFilter)}>
             <SelectTrigger className="h-9 bg-background md:w-52">
-              <SelectValue placeholder="Situacao" />
+              <SelectValue placeholder="Situação" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as situacoes</SelectItem>
@@ -563,7 +604,62 @@ const Contacts = () => {
               <SelectItem value="lost">Perdido</SelectItem>
               <SelectItem value="won">Cliente</SelectItem>
             </SelectContent>
-          </Select>
+          </Select>}
+
+          <Popover open={situationFilterOpen} onOpenChange={setSituationFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 justify-between bg-background font-normal md:w-52"
+              >
+                <span className="truncate text-left">{situationFilterLabel}</span>
+                <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2" align="end">
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => handleSituationSelection(ALL_SITUATIONS_VALUE)}
+                  className={cn(
+                    "flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-muted/60",
+                    allSituationsSelected && "bg-muted/60",
+                  )}
+                >
+                  <Checkbox checked={allSituationsSelected} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground">Todas as situações</p>
+                    <p className="text-xs text-muted-foreground">
+                      Marca ou limpa todas as situações disponíveis.
+                    </p>
+                  </div>
+                </button>
+
+                <div className="my-2 h-px bg-border" />
+
+                {allSituationOptions.map((situation) => {
+                  const checked = selectedSituations.includes(situation);
+
+                  return (
+                    <button
+                      key={situation}
+                      type="button"
+                      onClick={() => handleSituationSelection(situation)}
+                      className={cn(
+                        "flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-muted/60",
+                        checked && "bg-muted/60",
+                      )}
+                    >
+                      <Checkbox checked={checked} />
+                      <span className="min-w-0 flex-1 truncate text-foreground">{situationLabels[situation]}</span>
+                      {checked && <Check className="h-4 w-4 text-accent" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {hasActiveFilters && (
@@ -582,13 +678,13 @@ const Contacts = () => {
           <Card className="mx-auto max-w-2xl p-8 text-center">
             <h3 className="text-lg font-semibold text-foreground">Nenhum funil disponivel</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Seu usuario nao possui acesso a um funil ativo no momento.
+              Seu usuário não possui acesso a um funil ativo no momento.
             </p>
           </Card>
         ) : error ? (
           <div className="mx-auto flex max-w-md flex-col items-center gap-3 text-center">
             <X className="h-8 w-8 text-destructive" />
-            <h3 className="text-lg font-semibold text-foreground">Nao foi possivel carregar os contatos</h3>
+            <h3 className="text-lg font-semibold text-foreground">Não foi possível carregar os contatos</h3>
             <p className="text-sm text-muted-foreground">
               {error.message || "Erro ao carregar os dados do funil."}
             </p>
@@ -611,7 +707,7 @@ const Contacts = () => {
                     <th className="px-4 py-3 font-medium text-muted-foreground">Empresa</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">Telefone</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">E-mail</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">Situacao</th>
+                    <th className="px-4 py-3 font-medium text-muted-foreground">Situação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -622,8 +718,8 @@ const Contacts = () => {
                           <p className="truncate font-medium text-foreground">{row.contactName}</p>
                           <p className="truncate text-xs text-muted-foreground">
                             {row.linkedLeadCount > 1
-                              ? `${row.linkedLeadCount} negocios`
-                              : "1 negocio"}
+                              ? `${row.linkedLeadCount} negócios`
+                              : "1 negócio"}
                             {row.linkedFunnelCount > 1
                               ? ` • ${row.linkedFunnelCount} funis`
                               : row.funnelNames[0]
@@ -654,7 +750,7 @@ const Contacts = () => {
                             {row.phone}
                           </span>
                         ) : (
-                          "Nao informado"
+                          "Não informado"
                         )}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
@@ -670,7 +766,7 @@ const Contacts = () => {
                             ))}
                           </div>
                         ) : (
-                          "Nao informado"
+                          "Não informado"
                         )}
                       </td>
                       <td className="px-4 py-3">

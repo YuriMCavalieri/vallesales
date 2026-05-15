@@ -277,7 +277,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
       nextErrors.company_or_person = "Informe a empresa ou pessoa.";
     }
     if (!form.funnel_id) {
-      nextErrors.funnel_id = "Selecione o negocio/funil.";
+      nextErrors.funnel_id = "Selecione o negócio/funil.";
     }
     if (!form.stage_id) {
       nextErrors.stage_id = "Selecione a etapa do funil.";
@@ -289,7 +289,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
       nextErrors.phone = "Informe um telefone valido para o contato principal.";
     }
     if (form.source === "Indicacao" && !form.indication_by.trim()) {
-      nextErrors.indication_by = "Informe quem fez a indicacao.";
+      nextErrors.indication_by = "Informe quem fez a indicação.";
     }
 
     setErrors(nextErrors);
@@ -400,7 +400,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
       qc.invalidateQueries({ queryKey: ["crm_notifications_feed"] });
 
       if (failedUploads.length > 0) {
-        toast.error("O lead foi salvo, mas um ou mais anexos nao puderam ser enviados.");
+        toast.error("O lead foi salvo, mas um ou mais anexos não puderam ser enviados.");
       }
     }
 
@@ -440,7 +440,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
     if (!lead) return;
 
     const shouldArchive = window.confirm(
-      "Deseja arquivar este negocio? Ele saira do funil principal, mas continuara salvo no historico e o contato permanecera na aba Contatos.",
+      "Deseja arquivar este negócio? Ele sairá do funil principal, mas continuará salvo no histórico e o contato permanecerá na aba Contatos.",
     );
 
     if (!shouldArchive) return;
@@ -458,14 +458,14 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar lead" : "Novo lead"}</DialogTitle>
           <DialogDescription>
-            Preencha os dados do lead, organize os contatos e registre as informacoes comerciais em um unico formulario.
+            Preencha os dados do lead, organize os contatos e registre as informações comerciais em um único formulário.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={submit} className="space-y-5">
           <FormSection
             title="Dados do lead / empresa"
-            description="Informacoes principais da empresa, etapa atual e origem do lead."
+            description="Informações principais da empresa, etapa atual e origem do lead."
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FieldBlock className="md:col-span-2" error={errors.company_or_person}>
@@ -485,7 +485,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
               </FieldBlock>
 
               <FieldBlock error={errors.funnel_id}>
-                <Label>Negocio / funil *</Label>
+                <Label>Negócio / funil *</Label>
                 <Select
                   value={form.funnel_id}
                   onValueChange={(value) => {
@@ -553,7 +553,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
 
               <FieldBlock>
                 <div className="flex items-center justify-between">
-                  <Label>Responsavel</Label>
+                  <Label>Responsável</Label>
                   {user?.id && form.owner_id !== user.id && (
                     <button
                       type="button"
@@ -573,7 +573,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">Sem responsavel</SelectItem>
+                    <SelectItem value="__none__">Sem responsável</SelectItem>
                     {ownerOptions.map((profile) => (
                       <SelectItem key={profile.id} value={profile.id}>
                         {profile.full_name || profile.email}
@@ -602,7 +602,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
                   <SelectContent>
                     {SOURCE_OPTIONS.map((source) => (
                       <SelectItem key={source} value={source}>
-                        {source}
+                        {source === "Indicacao" ? "Indicação" : source}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -611,7 +611,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
 
               {form.source === "Indicacao" && (
                 <FieldBlock error={errors.indication_by}>
-                  <Label>Indicacao por</Label>
+                  <Label>Indicação por</Label>
                   <Input
                     placeholder="Quem indicou este lead?"
                     value={form.indication_by}
@@ -694,7 +694,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
 
           <FormSection
             title="Contato principal"
-            description="Esse contato principal sera usado como referencia principal do lead."
+            description="Esse contato principal será usado como referência principal do lead."
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <FieldBlock error={errors.contact_name}>
@@ -811,8 +811,8 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
           </FormSection>
 
           <FormSection
-            title="Informacoes comerciais"
-            description="Acompanhe contato realizado, proximo passo e observacoes comerciais."
+            title="Informações comerciais"
+            description="Acompanhe contato realizado, próximo passo e observações comerciais."
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FieldBlock>
@@ -849,18 +849,18 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
                   onCheckedChange={(checked) => patchForm({ has_been_contacted: checked })}
                 />
                 <div>
-                  <p className="text-sm font-medium text-foreground">Ja houve contato?</p>
+                  <p className="text-sm font-medium text-foreground">Já houve contato?</p>
                   <p className="text-xs text-muted-foreground">
-                    Marque quando o primeiro contato comercial ja tiver acontecido.
+                    Marque quando o primeiro contato comercial já tiver acontecido.
                   </p>
                 </div>
               </div>
 
               <FieldBlock className="md:col-span-2">
-                <Label>Observacoes</Label>
+                <Label>Observações</Label>
                 <Textarea
                   rows={4}
-                  placeholder="Anote contexto comercial, objeções ou proximos passos."
+                  placeholder="Anote contexto comercial, objeções ou próximos passos."
                   value={form.notes}
                   onChange={(event) => patchForm({ notes: event.target.value })}
                 />
@@ -869,8 +869,8 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
           </FormSection>
 
           <FormSection
-            title="Diagnostico contabil e servicos"
-            description="Registre o contexto financeiro, tributario e os servicos desejados pelo lead."
+            title="Diagnóstico contábil e serviços"
+            description="Registre o contexto financeiro, tributário e os serviços desejados pelo lead."
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FieldBlock>
@@ -980,7 +980,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Sim">Sim</SelectItem>
-                    <SelectItem value="Nao">Nao</SelectItem>
+                    <SelectItem value="Nao">Não</SelectItem>
                   </SelectContent>
                 </Select>
               </FieldBlock>
@@ -995,7 +995,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
               </FieldBlock>
 
               <FieldBlock className="md:col-span-2">
-                <Label>Tipo de servico</Label>
+                <Label>Tipo de serviço</Label>
                 <div className="grid grid-cols-1 gap-3 rounded-lg border border-border/70 p-4 md:grid-cols-2">
                   {serviceTypeOptions.map((serviceType) => {
                     const checked = form.service_types.includes(serviceType);
@@ -1014,25 +1014,25 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
                   })}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Voce pode selecionar mais de um servico quando necessario.
+                  Você pode selecionar mais de um serviço quando necessário.
                 </p>
               </FieldBlock>
 
               <FieldBlock className="md:col-span-2">
-                <Label>Detalhes sobre o servico necessario</Label>
+                <Label>Detalhes sobre o serviço necessário</Label>
                 <Textarea
                   rows={4}
-                  placeholder="Descreva com mais detalhes qual servico o lead procura, duvidas principais ou necessidades especificas."
+                  placeholder="Descreva com mais detalhes qual serviço o lead procura, dúvidas principais ou necessidades específicas."
                   value={form.service_details}
                   onChange={(event) => patchForm({ service_details: event.target.value })}
                 />
               </FieldBlock>
 
               <FieldBlock className="md:col-span-2">
-                <Label>Principais dores e motivacao para trocar de contabilidade</Label>
+                <Label>Principais dores e motivação para trocar de contabilidade</Label>
                 <Textarea
                   rows={4}
-                  placeholder="Descreva os principais problemas atuais, insatisfacoes e motivacoes para mudanca."
+                  placeholder="Descreva os principais problemas atuais, insatisfações e motivações para mudança."
                   value={form.accounting_pain_points}
                   onChange={(event) => patchForm({ accounting_pain_points: event.target.value })}
                 />
@@ -1047,7 +1047,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
                   onChange={(event) => setPayrollReportFile(event.target.files?.[0] ?? null)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Se voce selecionar um arquivo, ele sera anexado ao lead assim que o cadastro for salvo.
+                  Se você selecionar um arquivo, ele será anexado ao lead assim que o cadastro for salvo.
                 </p>
               </FieldBlock>
 
@@ -1083,7 +1083,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
             </Button>
             <Button type="submit" variant="accent" disabled={loading} className="font-semibold">
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEdit ? "Salvar alteracoes" : "Criar lead"}
+              {isEdit ? "Salvar alterações" : "Criar lead"}
             </Button>
           </DialogFooter>
           </form>
@@ -1103,7 +1103,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
           <DialogHeader>
             <DialogTitle>Marcar como perdido</DialogTitle>
             <DialogDescription>
-              O lead sera movido para perdido. Escolha se deseja arquivar agora ou manter no funil por 3 dias.
+              O lead será movido para perdido. Escolha se deseja arquivar agora ou manter no funil por 3 dias.
             </DialogDescription>
           </DialogHeader>
 
@@ -1113,7 +1113,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
             </p>
             <Textarea
               rows={4}
-              placeholder="Ex.: preco alto, sem retorno, fechou com outro fornecedor..."
+              placeholder="Ex.: preço alto, sem retorno, fechou com outro fornecedor..."
               value={lossReason}
               onChange={(event) => setLossReason(event.target.value)}
               disabled={loading}
@@ -1164,9 +1164,9 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Cliente fechado com arquivamento automatico</DialogTitle>
+            <DialogTitle>Cliente fechado com arquivamento automático</DialogTitle>
             <DialogDescription>
-              Este cliente permanecera visivel no funil por 3 dias. Apos esse periodo, sera arquivado automaticamente. O historico continuara salvo e o contato permanecera na aba Contatos.
+              Este cliente permanecerá visível no funil por 3 dias. Após esse período, será arquivado automaticamente. O histórico continuará salvo e o contato permanecerá na aba Contatos.
             </DialogDescription>
           </DialogHeader>
 

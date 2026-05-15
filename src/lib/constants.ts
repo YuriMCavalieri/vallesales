@@ -8,10 +8,10 @@ export const TEMPERATURE_OPTIONS = [
 
 export const CONTACT_METHOD_OPTIONS = [
   { value: "whatsapp", label: "WhatsApp" },
-  { value: "ligacao", label: "Ligacao" },
+  { value: "ligacao", label: "Ligação" },
   { value: "email", label: "E-mail" },
-  { value: "reuniao", label: "Reuniao" },
-  { value: "indicacao", label: "Indicacao" },
+  { value: "reuniao", label: "Reunião" },
+  { value: "indicacao", label: "Indicação" },
   { value: "outro", label: "Outro" },
 ] as const;
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { LeadDetailsSheet } from "@/components/crm/LeadDetailsSheet";
+import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,8 +12,11 @@ import { useActiveFunnel } from "@/hooks/useActiveFunnel";
 import { useLeads, useProfiles, useReopenLead, useRestoreLead, useStages } from "@/hooks/useLeads";
 import { usePermissions } from "@/hooks/useUserRoles";
 import { formatCurrency, formatDateTime } from "@/lib/constants";
+import { parseDateValue } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/types/crm";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import {
   ArchiveRestore,
   BriefcaseBusiness,
@@ -25,6 +29,7 @@ import {
   Search,
   X,
 } from "lucide-react";
+import type { DateRange } from "react-day-picker";
 
 type ArchivedSituation = "lost" | "won";
 type ArchivedSituationFilter = "all" | ArchivedSituation;
@@ -43,13 +48,36 @@ const situationStyles: Record<ArchivedSituation, string> = {
 
 const normalizeText = (value?: string | null) => (value ?? "").trim().toLowerCase();
 
+const normalizeRangeStart = (value: Date) => {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+const normalizeRangeEnd = (value: Date) => {
+  const date = new Date(value);
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
+
+const formatArchivedDateRangeLabel = (range?: DateRange) => {
+  if (!range?.from && !range?.to) return "Selecionar periodo";
+  if (range.from && !range.to) return format(range.from, "dd/MM/yyyy", { locale: ptBR });
+  if (range.from && range.to) {
+    return `${format(range.from, "dd/MM/yyyy", { locale: ptBR })} - ${format(range.to, "dd/MM/yyyy", { locale: ptBR })}`;
+  }
+  return "Selecionar periodo";
+};
+
 const ArchivedLeads = () => {
   const { activeFunnelId, funnels, loading: funnelLoading } = useActiveFunnel();
   const perms = usePermissions();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ArchivedSituationFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<ArchivedSituationFilter>("won");
+  const [archivedDateRange, setArchivedDateRange] = useState<DateRange | undefined>();
   const [selectedFunnelIds, setSelectedFunnelIds] = useState<string[]>([]);
   const [funnelFilterOpen, setFunnelFilterOpen] = useState(false);
+  const [periodFilterOpen, setPeriodFilterOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const accessibleFunnelIds = useMemo(() => funnels.map((funnel) => funnel.id), [funnels]);
@@ -108,8 +136,8 @@ const ArchivedLeads = () => {
         return {
           lead,
           commercialStatus,
-          funnelName: funnels.find((funnel) => funnel.id === lead.funnel_id)?.name ?? "Funil nao identificado",
-          ownerName: lead.owner_id ? ownerNameById.get(lead.owner_id) ?? "Responsavel nao encontrado" : "Sem responsavel",
+          funnelName: funnels.find((funnel) => funnel.id === lead.funnel_id)?.name ?? "Funil não identificado",
+          ownerName: lead.owner_id ? ownerNameById.get(lead.owner_id) ?? "Responsável não encontrado" : "Sem responsável",
         };
       })
       .filter((row): row is NonNullable<typeof row> => row !== null)
@@ -119,17 +147,28 @@ const ArchivedLeads = () => {
   const scopedRows = useMemo(() => {
     const allowedFunnels = new Set(selectedFunnelIds);
 
+    if (allowedFunnels.size === 0) return [];
+
     return archivedRows.filter((row) => {
-      if (allowedFunnels.size > 0 && !allowedFunnels.has(row.lead.funnel_id)) return false;
+      if (!allowedFunnels.has(row.lead.funnel_id)) return false;
       return true;
     });
   }, [archivedRows, selectedFunnelIds]);
 
   const filteredRows = useMemo(() => {
     const query = normalizeText(search);
+    const periodStart = archivedDateRange?.from ? normalizeRangeStart(archivedDateRange.from) : null;
+    const periodEnd = normalizeRangeEnd(archivedDateRange?.to ?? archivedDateRange?.from ?? new Date());
 
     return scopedRows.filter((row) => {
       if (statusFilter !== "all" && row.commercialStatus !== statusFilter) return false;
+
+      if (periodStart) {
+        const archivedAt = parseDateValue(row.lead.archived_at);
+        if (!archivedAt || archivedAt < periodStart || archivedAt > periodEnd) {
+          return false;
+        }
+      }
 
       if (!query) return true;
 
@@ -149,13 +188,12 @@ const ArchivedLeads = () => {
 
       return haystack.includes(query);
     });
-  }, [scopedRows, search, statusFilter]);
+  }, [archivedDateRange, scopedRows, search, statusFilter]);
 
   const toggleFunnel = (funnelId: string) => {
     setSelectedFunnelIds((current) => {
       if (current.includes(funnelId)) {
-        const next = current.filter((id) => id !== funnelId);
-        return next.length === 0 ? current : next;
+        return current.filter((id) => id !== funnelId);
       }
 
       return [...current, funnelId];
@@ -164,7 +202,9 @@ const ArchivedLeads = () => {
 
   const handleFunnelSelection = (value: string) => {
     if (value === ALL_FUNNELS_VALUE) {
-      setSelectedFunnelIds([...accessibleFunnelIds]);
+      setSelectedFunnelIds((current) =>
+        current.length === accessibleFunnelIds.length ? [] : [...accessibleFunnelIds],
+      );
       return;
     }
 
@@ -173,18 +213,24 @@ const ArchivedLeads = () => {
 
   const funnelFilterLabel = useMemo(() => {
     if (!hasAvailableFunnels) return "Nenhum funil";
+    if (selectedFunnelIds.length === 0) return "Nenhum funil selecionado";
     if (allFunnelsSelected) return "Todos os funis";
     if (selectedFunnels.length === 1) return selectedFunnels[0]?.name ?? "1 funil";
     return `${selectedFunnels.length} funis selecionados`;
-  }, [allFunnelsSelected, hasAvailableFunnels, selectedFunnels]);
+  }, [allFunnelsSelected, hasAvailableFunnels, selectedFunnelIds.length, selectedFunnels]);
 
   const statusSummaryLabel = useMemo(() => {
-    if (statusFilter === "lost") return "Mostrando apenas negocios perdidos.";
+    if (statusFilter === "lost") return "Mostrando apenas negócios perdidos.";
     if (statusFilter === "won") return "Mostrando apenas clientes fechados.";
-    return "Mostrando todos os negocios arquivados.";
+    return "Mostrando todos os negócios arquivados.";
   }, [statusFilter]);
 
-  const hasActiveFilters = !!search.trim() || statusFilter !== "all" || !allFunnelsSelected;
+  const periodSummaryLabel = useMemo(() => {
+    if (!archivedDateRange?.from) return "Periodo: todo o historico.";
+    return `Periodo: ${formatArchivedDateRangeLabel(archivedDateRange)}.`;
+  }, [archivedDateRange]);
+
+  const hasActiveFilters = !!search.trim() || statusFilter !== "won" || !!archivedDateRange?.from || !allFunnelsSelected;
   const loading = funnelLoading || leads.isLoading || stages.isLoading || profiles.isLoading;
   const error =
     (leads.error as Error | null) ??
@@ -225,34 +271,34 @@ const ArchivedLeads = () => {
                   <FolderArchive className="h-6 w-6" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Historico comercial</p>
-                  <h2 className="mt-1 text-2xl font-bold tracking-tight text-foreground md:text-3xl">Negocios arquivados</h2>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Histórico comercial</p>
+                  <h2 className="mt-1 text-2xl font-bold tracking-tight text-foreground md:text-3xl">Negócios arquivados</h2>
                   <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-                    Espaco dedicado para negocios que ja sairam da operacao principal, sem misturar com os contatos nem poluir o funil.
+                    Espaço dedicado para negócios que já saíram da operação principal, sem misturar com os contatos nem poluir o funil.
                   </p>
                 </div>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
-                <FilterStatCard
+              <div className="grid gap-3 md:grid-cols-2">
+                {false && <FilterStatCard
                   label="Todos os arquivados"
-                  helper="Visao completa do historico"
+                  helper="Visão completa do histórico"
                   value={String(scopedRows.length)}
                   icon={<FolderArchive className="h-4 w-4" />}
                   active={statusFilter === "all"}
                   onClick={() => setStatusFilter("all")}
-                />
+                />}
                 <FilterStatCard
                   label="Fechados (clientes)"
-                  helper="Clique para ver so clientes"
+                  helper="Clique para ver só clientes"
                   value={String(scopedRows.filter((row) => row.commercialStatus === "won").length)}
                   icon={<Check className="h-4 w-4" />}
                   active={statusFilter === "won"}
                   onClick={() => setStatusFilter("won")}
                 />
                 <FilterStatCard
-                  label="Negocios perdidos"
-                  helper="Clique para ver so perdidos"
+                  label="Negócios perdidos"
+                  helper="Clique para ver só perdidos"
                   value={String(scopedRows.filter((row) => row.commercialStatus === "lost").length)}
                   icon={<X className="h-4 w-4" />}
                   active={statusFilter === "lost"}
@@ -267,7 +313,7 @@ const ArchivedLeads = () => {
               <div>
                 <p className="text-sm font-semibold text-foreground">Refinar consulta</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Busque por empresa, contato, responsavel, funil ou motivo da perda.
+                  Busque por empresa, contato, responsável, funil ou motivo da perda.
                 </p>
               </div>
 
@@ -319,7 +365,7 @@ const ArchivedLeads = () => {
                         <p className="text-xs text-muted-foreground">
                           {accessibleFunnelIds.length === 1
                             ? "Equivale ao unico funil disponivel."
-                            : `Inclui os ${accessibleFunnelIds.length} funis disponiveis para voce.`}
+                        : `Inclui os ${accessibleFunnelIds.length} funis disponíveis para você.`}
                         </p>
                       </div>
                     </button>
@@ -349,8 +395,53 @@ const ArchivedLeads = () => {
                 </PopoverContent>
               </Popover>
 
-              <div className="rounded-xl border border-border/70 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-                {statusSummaryLabel}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">Periodo de arquivamento</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Popover open={periodFilterOpen} onOpenChange={setPeriodFilterOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 justify-between bg-background font-normal"
+                      >
+                        <span className="truncate text-left">{formatArchivedDateRangeLabel(archivedDateRange)}</span>
+                        <CalendarClock className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="range"
+                        numberOfMonths={2}
+                        locale={ptBR}
+                        selected={archivedDateRange}
+                        onSelect={(range) => {
+                          setArchivedDateRange(range);
+                          if (range?.from && range?.to) {
+                            setPeriodFilterOpen(false);
+                          }
+                        }}
+                        defaultMonth={archivedDateRange?.from}
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  {archivedDateRange?.from && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-8"
+                      onClick={() => setArchivedDateRange(undefined)}
+                    >
+                      Limpar
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="sr-only">{statusSummaryLabel}</span>
+                  {periodSummaryLabel}
+                </p>
               </div>
             </div>
           </Card>
@@ -358,7 +449,7 @@ const ArchivedLeads = () => {
 
         {hasActiveFilters && (
           <div className="mt-4 text-xs text-muted-foreground">
-            {filteredRows.length} negocio(s) encontrado(s)
+            {filteredRows.length} negócio(s) encontrado(s)
           </div>
         )}
       </div>
@@ -372,22 +463,22 @@ const ArchivedLeads = () => {
           <Card className="mx-auto max-w-2xl p-8 text-center">
             <h3 className="text-lg font-semibold text-foreground">Nenhum funil disponivel</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Seu usuario nao possui acesso a um funil ativo no momento.
+              Seu usuário não possui acesso a um funil ativo no momento.
             </p>
           </Card>
         ) : error ? (
           <div className="mx-auto flex max-w-md flex-col items-center gap-3 text-center">
             <X className="h-8 w-8 text-destructive" />
-            <h3 className="text-lg font-semibold text-foreground">Nao foi possivel carregar os arquivados</h3>
+            <h3 className="text-lg font-semibold text-foreground">Não foi possível carregar os arquivados</h3>
             <p className="text-sm text-muted-foreground">
               {error.message || "Erro ao carregar os dados do funil."}
             </p>
           </div>
         ) : filteredRows.length === 0 ? (
           <Card className="mx-auto max-w-2xl p-8 text-center">
-            <h3 className="text-lg font-semibold text-foreground">Nenhum negocio arquivado encontrado</h3>
+            <h3 className="text-lg font-semibold text-foreground">Nenhum negócio arquivado encontrado</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Ajuste os filtros ou aguarde novos arquivamentos para visualizar historico aqui.
+              Ajuste os filtros ou aguarde novos arquivamentos para visualizar histórico aqui.
             </p>
           </Card>
         ) : (
@@ -398,11 +489,11 @@ const ArchivedLeads = () => {
               return (
                 <Card
                   key={row.lead.id}
-                  className="group cursor-pointer border-border/70 bg-card/90 p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-lg"
+                  className="group cursor-pointer border-border/70 bg-card/90 p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-lg"
                   onClick={() => handleOpenLead(row.lead)}
                 >
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge variant="outline" className={situationStyles[row.commercialStatus]}>
@@ -412,7 +503,7 @@ const ArchivedLeads = () => {
                             {row.funnelName}
                           </Badge>
                         </div>
-                        <h3 className="mt-3 truncate text-lg font-semibold text-foreground">
+                        <h3 className="mt-2 truncate text-base font-semibold text-foreground">
                           {row.lead.company_or_person}
                         </h3>
                         <p className="mt-1 text-sm text-muted-foreground">
@@ -420,12 +511,12 @@ const ArchivedLeads = () => {
                         </p>
                       </div>
 
-                      <div className="shrink-0 rounded-2xl bg-accent/8 p-3 text-accent">
-                        {row.commercialStatus === "won" ? <Check className="h-5 w-5" /> : <X className="h-5 w-5" />}
+                      <div className="shrink-0 rounded-xl bg-accent/8 p-2 text-accent">
+                        {row.commercialStatus === "won" ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
                       </div>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid gap-2 md:grid-cols-2">
                       <InfoPill
                         icon={<CalendarClock className="h-3.5 w-3.5" />}
                         label="Arquivado em"
@@ -436,7 +527,7 @@ const ArchivedLeads = () => {
                         label={row.commercialStatus === "won" ? "Marcado como cliente" : "Marcado como perdido"}
                         value={formatDateTime(row.commercialStatus === "lost" ? row.lead.lost_at : row.lead.won_at)}
                       />
-                      <InfoPill label="Responsavel" value={row.ownerName} />
+                      <InfoPill label="Responsável" value={row.ownerName} />
                       <InfoPill
                         label="Valor"
                         value={Number(row.lead.estimated_value) > 0 ? formatCurrency(row.lead.estimated_value) : "-"}
@@ -449,7 +540,7 @@ const ArchivedLeads = () => {
                       </div>
                     )}
 
-                    <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+                    <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-2">
                       <Button
                         type="button"
                         size="sm"
@@ -487,7 +578,7 @@ const ArchivedLeads = () => {
                             }}
                           >
                             <RotateCcw className="mr-1 h-3.5 w-3.5" />
-                            Reabrir negocio
+                            Reabrir negócio
                           </Button>
                         </>
                       )}
@@ -565,12 +656,12 @@ const InfoPill = ({
   value: string;
   icon?: React.ReactNode;
 }) => (
-  <div className="rounded-xl border border-border/70 bg-muted/15 px-3 py-2.5">
+  <div className="rounded-xl border border-border/70 bg-muted/15 px-3 py-2">
     <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
       {icon}
       {label}
     </p>
-    <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
+    <p className="mt-0.5 text-sm font-medium text-foreground">{value}</p>
   </div>
 );
 

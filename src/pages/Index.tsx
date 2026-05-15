@@ -480,7 +480,7 @@ const Index = () => {
                             </div>
                           </TooltipTrigger>
                           <TooltipContent side="right">
-                            Voce nao tem acesso a esse funil.
+                            Você não tem acesso a esse funil.
                           </TooltipContent>
                         </Tooltip>
                       ))}
@@ -552,7 +552,7 @@ const Index = () => {
                   <StatCard icon={<Thermometer className="h-4 w-4" />} label="Fechados" value={formatCurrency(stats.wonValue)} tone="success" />
                   <StatCard
                     icon={<Zap className="h-4 w-4" />}
-                    label="Acoes hoje"
+                    label="Ações hoje"
                     value={String(stats.actionToday)}
                     tone={stats.actionToday > 0 ? "accent" : "muted"}
                     clickable
@@ -601,7 +601,7 @@ const Index = () => {
                       ? "border-accent bg-accent text-accent-foreground shadow-sm"
                       : "border-border bg-background text-foreground hover:border-accent/40 hover:text-accent",
                   )}
-                  title="Mostrar somente leads em que sou responsavel"
+                  title="Mostrar somente leads em que sou responsável"
                 >
                   <UserCheck className="h-4 w-4" />
                   <span className="hidden md:inline">Meus leads</span>
@@ -611,11 +611,11 @@ const Index = () => {
                 <Select value={ownerFilter} onValueChange={setOwnerFilter} disabled={onlyMine}>
                   <SelectTrigger className="h-9 bg-background md:w-56">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    <SelectValue placeholder="Responsavel" />
+                    <SelectValue placeholder="Responsável" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos os responsaveis</SelectItem>
-                    <SelectItem value="none">Sem responsavel</SelectItem>
+                    <SelectItem value="all">Todos os responsáveis</SelectItem>
+                    <SelectItem value="none">Sem responsável</SelectItem>
                     {(profiles.data ?? []).map((profile) => (
                       <SelectItem key={profile.id} value={profile.id}>
                         {profile.full_name || profile.email}
@@ -630,7 +630,7 @@ const Index = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos os status</SelectItem>
-                    <SelectItem value="acao_hoje">Acoes hoje</SelectItem>
+                    <SelectItem value="acao_hoje">Ações hoje</SelectItem>
                     <SelectItem value="atrasados">Follow-up atrasado</SelectItem>
                     <SelectItem value="follow_hoje">Follow-up hoje</SelectItem>
                     <SelectItem value="sem_contato">Sem contato</SelectItem>
@@ -665,7 +665,7 @@ const Index = () => {
                   )}
                   {statusFilter === "acao_hoje" && (
                     <Badge variant="outline" className="border-accent/30 bg-accent/10 text-accent">
-                      Acoes hoje
+                      Ações hoje
                     </Badge>
                   )}
                 </div>
@@ -709,13 +709,13 @@ const Index = () => {
                 <AlertTriangle className="h-10 w-10 text-warning" />
                 <h3 className="text-lg font-semibold">Nenhum funil disponivel</h3>
                 <p className="text-sm text-muted-foreground">
-                  Seu usuario nao possui acesso a um funil ativo no momento.
+                  Seu usuário não possui acesso a um funil ativo no momento.
                 </p>
               </div>
             ) : (stages.isError || leads.isError) ? (
               <div className="mx-auto flex min-h-[320px] max-w-md flex-col items-center justify-center gap-3 text-center">
                 <AlertTriangle className="h-10 w-10 text-destructive" />
-                <h3 className="text-lg font-semibold">Nao foi possivel carregar os dados</h3>
+                <h3 className="text-lg font-semibold">Não foi possível carregar os dados</h3>
                 <p className="text-sm text-muted-foreground">
                   {(stages.error as Error)?.message || (leads.error as Error)?.message || "Erro de conexao com o backend."}
                 </p>
@@ -774,7 +774,7 @@ const Index = () => {
         }}
         archiveLead={selectedLead ? async () => {
           const shouldArchive = window.confirm(
-            "Deseja arquivar este negocio? Ele saira do funil principal, mas continuara salvo no historico e o contato permanecera na aba Contatos.",
+            "Deseja arquivar este negócio? Ele sairá do funil principal, mas continuará salvo no histórico e o contato permanecerá na aba Contatos.",
           );
           if (!shouldArchive) return;
           await archiveLead.mutateAsync(selectedLead.id);
@@ -788,7 +788,7 @@ const Index = () => {
           <DialogHeader>
             <DialogTitle>Criar novo funil</DialogTitle>
             <DialogDescription>
-              Adicione um novo negocio para separar leads, dashboard e contatos.
+              Adicione um novo negócio para separar leads, dashboard e contatos.
             </DialogDescription>
           </DialogHeader>
 
@@ -801,7 +801,7 @@ const Index = () => {
           >
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground" htmlFor="new-funnel-name">
-                Nome do negocio / funil
+                Nome do negócio / funil
               </label>
               <Input
                 id="new-funnel-name"
@@ -839,8 +839,8 @@ const Index = () => {
             <AlertDialogTitle>Excluir funil</AlertDialogTitle>
             <AlertDialogDescription>
               {funnelPendingDeletion
-                ? `Tem certeza que deseja excluir o funil "${funnelPendingDeletion.name}"? Essa acao nao pode ser desfeita.`
-                : "Confirme a exclusao do funil."}
+                ? `Tem certeza que deseja excluir o funil "${funnelPendingDeletion.name}"? Essa ação não pode ser desfeita.`
+                : "Confirme a exclusão do funil."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

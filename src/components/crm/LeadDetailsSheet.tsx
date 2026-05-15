@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
+import { parseDateValue } from "@/lib/date";
 import { COMPANY_MATURITY_LABELS, parseAdditionalContacts, parseLeadSource } from "@/lib/lead-form";
 
 interface Props {
@@ -59,6 +60,8 @@ interface Props {
   reopenLead?: () => Promise<void>;
 }
 
+type AttachmentPeriodFilter = "all" | "today" | "last_7_days" | "last_30_days" | "this_month" | "last_month";
+
 const tempColors: Record<string, string> = {
   frio: "bg-temp-frio/10 text-temp-frio border-temp-frio/30",
   morno: "bg-temp-morno/10 text-temp-morno border-temp-morno/30",
@@ -72,13 +75,59 @@ const tempLabel: Record<string, string> = {
 };
 
 const activityLabel: Record<string, string> = {
-  stage_change: "Mudanca de etapa",
-  owner_change: "Mudanca de responsavel",
-  note_added: "Observacao",
+  stage_change: "Mudança de etapa",
+  owner_change: "Mudança de responsável",
+  note_added: "Observação",
   contact_logged: "Contato realizado",
   attachment_added: "Anexo",
   lead_created: "Lead criado",
-  lead_updated: "Atualizacao",
+  lead_updated: "Atualização",
+};
+
+const attachmentPeriodLabels: Record<AttachmentPeriodFilter, string> = {
+  all: "Todo o periodo",
+  today: "Hoje",
+  last_7_days: "Ultimos 7 dias",
+  last_30_days: "Ultimos 30 dias",
+  this_month: "Este mes",
+  last_month: "Mes passado",
+};
+
+const getAttachmentDateRange = (filter: AttachmentPeriodFilter, now = new Date()) => {
+  if (filter === "all") return null;
+
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+
+  if (filter === "today") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    return { start, end };
+  }
+
+  if (filter === "last_7_days") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - 6);
+    return { start, end };
+  }
+
+  if (filter === "last_30_days") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - 29);
+    return { start, end };
+  }
+
+  if (filter === "this_month") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    return { start, end };
+  }
+
+  return {
+    start: new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0),
+    end: new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999),
+  };
 };
 
 export const LeadDetailsSheet = ({
@@ -99,6 +148,7 @@ export const LeadDetailsSheet = ({
   const [contactMethod, setContactMethod] = useState("whatsapp");
   const [contactDesc, setContactDesc] = useState("");
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>("__none__");
+  const [attachmentPeriodFilter, setAttachmentPeriodFilter] = useState<AttachmentPeriodFilter>("all");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const activities = useLeadActivities(lead?.id ?? null);
@@ -108,7 +158,7 @@ export const LeadDetailsSheet = ({
   const logContact = useLogContact(lead?.id ?? "");
   const upload = useUploadAttachment(lead?.id ?? "");
   const del = useDeleteLead();
-  const updateLead = useUpdateLead({ errorMessage: "Nao foi possivel alterar o responsavel." });
+  const updateLead = useUpdateLead({ errorMessage: "Não foi possível alterar o responsável." });
   const { data: assignableProfiles = [] } = useAssignableProfiles(lead?.funnel_id, !!lead?.funnel_id);
   const { funnels } = useActiveFunnel();
   const { user } = useAuth();
@@ -116,6 +166,25 @@ export const LeadDetailsSheet = ({
   useEffect(() => {
     setSelectedOwnerId(lead?.owner_id || "__none__");
   }, [lead?.id, lead?.owner_id]);
+
+  useEffect(() => {
+    setAttachmentPeriodFilter("all");
+  }, [lead?.id]);
+
+  const filteredAttachments = useMemo(() => {
+    const items = attachments.data ?? [];
+    const range = getAttachmentDateRange(attachmentPeriodFilter);
+
+    if (!range) {
+      return items;
+    }
+
+    return items.filter((attachment) => {
+      const createdAt = parseDateValue(attachment.created_at);
+      if (!createdAt) return false;
+      return createdAt >= range.start && createdAt <= range.end;
+    });
+  }, [attachmentPeriodFilter, attachments.data]);
 
   if (!lead) return null;
 
@@ -282,16 +351,16 @@ export const LeadDetailsSheet = ({
             {(lead.city || lead.uf) && (
               <Info
                 icon={<MapPin className="h-3.5 w-3.5" />}
-                label="Localizacao"
+                label="Localização"
                 value={[lead.city, lead.uf].filter(Boolean).join(" / ")}
               />
             )}
-            {funnel && <Info label="Negocio" value={funnel.name} />}
+            {funnel && <Info label="Negócio" value={funnel.name} />}
 
             <div className="col-span-2 space-y-1">
               <p className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-muted-foreground">
                 <UserIcon className="h-3.5 w-3.5" />
-                Responsavel
+                Responsável
               </p>
               <Select
                 value={selectedOwnerId}
@@ -299,10 +368,10 @@ export const LeadDetailsSheet = ({
                 disabled={updateLead.isPending || !canEditLead}
               >
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Sem responsavel" />
+                  <SelectValue placeholder="Sem responsável" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Sem responsavel</SelectItem>
+                  <SelectItem value="__none__">Sem responsável</SelectItem>
                   {ownerOptions.map((profile) => (
                     <SelectItem key={profile.id} value={profile.id}>
                       {profile.full_name || profile.email}
@@ -330,7 +399,7 @@ export const LeadDetailsSheet = ({
             {lead.cnpj && <Info label="CNPJ" value={lead.cnpj} />}
             {lead.employee_count && <Info label="Funcionarios" value={lead.employee_count} />}
             {sourceState.source && <Info label="Origem" value={sourceState.source} />}
-            {sourceState.indication_by && <Info label="Indicacao por" value={sourceState.indication_by} />}
+            {sourceState.indication_by && <Info label="Indicação por" value={sourceState.indication_by} />}
             {lead.company_maturity && (
               <Info
                 label="Perfil empresarial"
@@ -419,7 +488,7 @@ export const LeadDetailsSheet = ({
               <div>
                 <h4 className="text-sm font-semibold text-foreground">Diagnostico financeiro e operacional</h4>
                 <p className="text-xs text-muted-foreground">
-                  Informacoes complementares coletadas no formulario comercial.
+                  Informações complementares coletadas no formulário comercial.
                 </p>
               </div>
               <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
@@ -437,7 +506,7 @@ export const LeadDetailsSheet = ({
                 {lead.payroll_gross_value && <Info label="Folha bruta media" value={lead.payroll_gross_value} />}
                 {lead.bank_account_count && <Info label="Contas bancarias" value={lead.bank_account_count} />}
                 {lead.bank_accounts_split && (
-                  <Info label="Separacao por projeto/centro de custo" value={lead.bank_accounts_split} />
+                  <Info label="Separação por projeto/centro de custo" value={lead.bank_accounts_split} />
                 )}
                 {lead.financial_system && <Info label="Sistema financeiro" value={lead.financial_system} />}
               </div>
@@ -461,11 +530,11 @@ export const LeadDetailsSheet = ({
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="history">
                 <History className="mr-1 h-3.5 w-3.5" />
-                Historico
+                Histórico
               </TabsTrigger>
               <TabsTrigger value="notes">
                 <FileText className="mr-1 h-3.5 w-3.5" />
-                Observacoes
+                Observações
               </TabsTrigger>
               <TabsTrigger value="files">
                 <Paperclip className="mr-1 h-3.5 w-3.5" />
@@ -539,11 +608,11 @@ export const LeadDetailsSheet = ({
               <div className="space-y-2">
                 <h4 className="flex items-center gap-2 text-sm font-semibold">
                   <MessageSquarePlus className="h-4 w-4" />
-                  Nova observacao
+                  Nova observação
                 </h4>
                 <Textarea
                   rows={3}
-                  placeholder="Escreva uma observacao..."
+                  placeholder="Escreva uma observação..."
                   value={newNote}
                   onChange={(event) => setNewNote(event.target.value)}
                   disabled={!canEditLead}
@@ -558,7 +627,7 @@ export const LeadDetailsSheet = ({
 
               <div className="space-y-2">
                 {notes.data?.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Sem observacoes.</p>
+                  <p className="text-xs text-muted-foreground">Sem observações.</p>
                 ) : (
                   notes.data?.map((note) => (
                     <Card key={note.id} className="p-3 text-sm">
@@ -573,28 +642,56 @@ export const LeadDetailsSheet = ({
             </TabsContent>
 
             <TabsContent value="files" className="mt-4 space-y-4">
-              <div>
-                <input ref={fileRef} type="file" className="hidden" onChange={handleUpload} />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={upload.isPending || !canEditLead}
-                >
-                  {upload.isPending ? (
-                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <FileUp className="mr-1 h-3.5 w-3.5" />
-                  )}
-                  Enviar arquivo
-                </Button>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-1 sm:min-w-[220px]">
+                  <p className="text-xs font-medium text-muted-foreground">Filtrar por periodo</p>
+                  <Select
+                    value={attachmentPeriodFilter}
+                    onValueChange={(value) => setAttachmentPeriodFilter(value as AttachmentPeriodFilter)}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(attachmentPeriodLabels).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {filteredAttachments.length} {filteredAttachments.length === 1 ? "arquivo" : "arquivos"}
+                  </span>
+                  <input ref={fileRef} type="file" className="hidden" onChange={handleUpload} />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={upload.isPending || !canEditLead}
+                  >
+                    {upload.isPending ? (
+                      <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <FileUp className="mr-1 h-3.5 w-3.5" />
+                    )}
+                    Enviar arquivo
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-2">
-                {attachments.data?.length === 0 ? (
+                {attachments.isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : attachments.data?.length === 0 ? (
                   <p className="text-xs text-muted-foreground">Sem anexos.</p>
+                ) : filteredAttachments.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhum arquivo encontrado para o periodo selecionado.</p>
                 ) : (
-                  attachments.data?.map((attachment) => (
+                  filteredAttachments.map((attachment) => (
                     <Card key={attachment.id} className="flex items-center justify-between gap-2 p-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{attachment.file_name}</p>

@@ -230,7 +230,7 @@ export const KanbanBoard = ({
       setLostLeadPending(null);
       setLossReason("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nao foi possivel mover o lead para perdido.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível mover o lead para perdido.");
     } finally {
       setSavingLostReason(false);
     }
@@ -244,7 +244,7 @@ export const KanbanBoard = ({
       await finalizeLeadStageChange(wonLeadPending.lead, wonLeadPending.targetStageId, { archiveAfter });
       setWonLeadPending(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nao foi possivel mover o lead para cliente.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível mover o lead para cliente.");
     } finally {
       setSavingLostReason(false);
     }
@@ -443,8 +443,8 @@ export const KanbanBoard = ({
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 shrink-0 text-muted-foreground/80 hover:bg-muted hover:text-foreground"
-                                  aria-label={`Abrir acoes da fase ${stage.name}`}
-                                  title="Acoes da fase"
+                                  aria-label={`Abrir ações da fase ${stage.name}`}
+                                  title="Ações da fase"
                                 >
                                   <MoreHorizontal className="h-3.5 w-3.5" />
                                 </Button>
@@ -638,8 +638,8 @@ export const KanbanBoard = ({
             <AlertDialogTitle>Excluir fase</AlertDialogTitle>
             <AlertDialogDescription>
               {stagePendingDeletion
-                ? `Tem certeza que deseja apagar a fase "${stagePendingDeletion.name}"? Essa acao nao pode ser desfeita.`
-                : "Confirme a exclusao da fase."}
+                ? `Tem certeza que deseja apagar a fase "${stagePendingDeletion.name}"? Essa ação não pode ser desfeita.`
+                : "Confirme a exclusão da fase."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -672,7 +672,7 @@ export const KanbanBoard = ({
           <DialogHeader>
             <DialogTitle>Marcar como perdido</DialogTitle>
             <DialogDescription>
-              O lead sera movido para perdido. Escolha se deseja arquivar agora ou manter no funil por 3 dias.
+              O lead será movido para perdido. Escolha se deseja arquivar agora ou manter no funil por 3 dias.
             </DialogDescription>
           </DialogHeader>
 
@@ -684,7 +684,7 @@ export const KanbanBoard = ({
             </p>
             <Textarea
               rows={4}
-              placeholder="Ex.: preco alto, sem retorno, projeto adiado..."
+              placeholder="Ex.: preço alto, sem retorno, projeto adiado..."
               value={lossReason}
               onChange={(event) => setLossReason(event.target.value)}
               disabled={savingLostReason}
@@ -735,9 +735,9 @@ export const KanbanBoard = ({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cliente fechado com arquivamento automatico</DialogTitle>
+            <DialogTitle>Cliente fechado com arquivamento automático</DialogTitle>
             <DialogDescription>
-              Este cliente permanecera visivel no funil por 3 dias. Apos esse periodo, sera arquivado automaticamente. O historico continuara salvo e o contato permanecera na aba Contatos.
+              Este cliente permanecerá visível no funil por 3 dias. Após esse período, será arquivado automaticamente. O histórico continuará salvo e o contato permanecerá na aba Contatos.
             </DialogDescription>
           </DialogHeader>
 

@@ -26,10 +26,10 @@ export const FunnelManagement = () => {
     <section className="space-y-6">
       <div>
         <h3 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
-          Negocios e funis
+          Negócios e funis
         </h3>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Crie novos negocios e mantenha a Valle Consultores como funil principal.
+          Crie novos negócios e mantenha a Valle Consultores como funil principal.
         </p>
       </div>
 
@@ -37,7 +37,7 @@ export const FunnelManagement = () => {
         <div className="flex flex-col gap-3 md:flex-row md:items-end">
           <div className="flex-1 space-y-2">
             <label className="text-sm font-medium text-foreground" htmlFor="new-funnel-name">
-              Novo negocio / funil
+              Novo negócio / funil
             </label>
             <Input
               id="new-funnel-name"

@@ -89,7 +89,7 @@ const invokeLeadsApi = async <T>(body: Record<string, unknown>, retryOnAuthFailu
       }
 
       if (status === 401) {
-        throw new Error("Sua sessao expirou ou nao foi encontrada. Entre novamente no sistema.");
+        throw new Error("Sua sessão expirou ou não foi encontrada. Entre novamente no sistema.");
       }
 
       throw new Error(message);
@@ -214,7 +214,7 @@ export const useCreatePipelineStage = () => {
         const referenceStage = afterStageId ? stages.find((stage) => stage.id === afterStageId) ?? null : null;
 
         if (afterStageId && !referenceStage) {
-          throw new Error("Nao foi possivel encontrar a etapa de referencia neste funil.");
+          throw new Error("Não foi possível encontrar a etapa de referência neste funil.");
         }
 
         let insertPosition = 1;
@@ -319,11 +319,11 @@ export const useDeletePipelineStage = () => {
         const targetStage = stages.find((stage) => stage.id === stageId) ?? null;
 
         if (!targetStage) {
-          throw new Error("Etapa do funil nao encontrada.");
+          throw new Error("Etapa do funil não encontrada.");
         }
 
         if (targetStage.is_won || targetStage.is_lost) {
-          throw new Error("As etapas finais de ganho ou perda nao podem ser excluidas.");
+          throw new Error("As etapas finais de ganho ou perda não podem ser excluídas.");
         }
 
         const { count, error: countError } = await supabase
@@ -335,7 +335,7 @@ export const useDeletePipelineStage = () => {
         if (countError) throw countError;
 
         if ((count ?? 0) > 0) {
-          throw new Error("Nao e possivel excluir uma etapa que ainda possui leads vinculados.");
+          throw new Error("Não é possível excluir uma etapa que ainda possui leads vinculados.");
         }
 
         const { error: deleteError } = await supabase
@@ -486,7 +486,7 @@ export const useArchiveLead = () => {
       qc.invalidateQueries({ queryKey: ["lead", id] });
       qc.invalidateQueries({ queryKey: ["lead_activities", id] });
       qc.invalidateQueries({ queryKey: ["crm_notifications_feed"] });
-      toast.success("Negocio arquivado");
+      toast.success("Negócio arquivado");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -505,7 +505,7 @@ export const useRestoreLead = () => {
       qc.invalidateQueries({ queryKey: ["lead", id] });
       qc.invalidateQueries({ queryKey: ["lead_activities", id] });
       qc.invalidateQueries({ queryKey: ["crm_notifications_feed"] });
-      toast.success("Negocio restaurado");
+      toast.success("Negócio restaurado");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -528,7 +528,7 @@ export const useReopenLead = () => {
       qc.invalidateQueries({ queryKey: ["lead", vars.id] });
       qc.invalidateQueries({ queryKey: ["lead_activities", vars.id] });
       qc.invalidateQueries({ queryKey: ["crm_notifications_feed"] });
-      toast.success("Negocio reaberto");
+      toast.success("Negócio reaberto");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -591,7 +591,7 @@ export const addLeadNoteEntry = async ({
   leadId,
   content,
   userId,
-  activityDescription = "Nova observacao adicionada",
+  activityDescription = "Nova observação adicionada",
 }: {
   leadId: string;
   content: string;
@@ -706,7 +706,7 @@ export const uploadLeadAttachmentFile = async ({
     .from("lead-attachments").upload(path, file);
   if (upErr) {
     if (/row-level security|violates row level security/i.test(upErr.message)) {
-      throw new Error("Nao foi possivel enviar o anexo por falta de permissao neste lead.");
+      throw new Error("Não foi possível enviar o anexo por falta de permissão neste lead.");
     }
     throw upErr;
   }
@@ -723,7 +723,7 @@ export const uploadLeadAttachmentFile = async ({
   if (error) {
     await supabase.storage.from("lead-attachments").remove([path]);
     if (/row-level security|violates row level security/i.test(error.message)) {
-      throw new Error("Nao foi possivel enviar o anexo por falta de permissao neste lead.");
+      throw new Error("Não foi possível enviar o anexo por falta de permissão neste lead.");
     }
     throw error;
   }
@@ -736,7 +736,7 @@ export const uploadLeadAttachmentFile = async ({
     updated_by: userId,
   });
   if (activityError) {
-    console.warn("Nao foi possivel registrar a atividade do anexo.", activityError);
+    console.warn("Não foi possível registrar a atividade do anexo.", activityError);
   }
 };
 
