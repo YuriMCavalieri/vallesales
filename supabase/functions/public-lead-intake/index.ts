@@ -24,13 +24,20 @@ type IntakePayload = {
   company_or_person?: unknown;
   company_maturity?: unknown;
   contact_name?: unknown;
+  target_funnel_name?: unknown;
   service_types?: unknown;
+  service_details?: unknown;
   phone?: unknown;
   email?: unknown;
   employee_count?: unknown;
   employee_count_clt?: unknown;
   employee_count_pj?: unknown;
   cnpj?: unknown;
+  city?: unknown;
+  uf?: unknown;
+  segment?: unknown;
+  segment_other?: unknown;
+  additional_contacts?: unknown;
   tax_regime?: unknown;
   monthly_revenue_managerial?: unknown;
   monthly_revenue_fiscal?: unknown;
@@ -95,6 +102,35 @@ const normalizeServiceTypes = (value: unknown) => {
   );
 };
 
+const normalizeTextKey = (value: string | null | undefined) =>
+  (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+
+const normalizeAdditionalContacts = (value: unknown) => {
+  if (!Array.isArray(value)) return [] as Array<{ id: string; name: string; phone: string; email: string }>;
+
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+      const record = item as Record<string, unknown>;
+      const name = normalizeOptionalString(record.name) ?? "";
+      const phone = normalizePhone(record.phone) ?? "";
+      const email = normalizeOptionalString(record.email) ?? "";
+      if (!name && !phone && !email) return null;
+      return {
+        id: normalizeOptionalString(record.id) ?? `public-contact-${index + 1}`,
+        name,
+        phone,
+        email,
+      };
+    })
+    .filter((item): item is { id: string; name: string; phone: string; email: string } => item !== null);
+};
+
 const buildNotes = (
   payload: RequiredPick<IntakePayload, "notes" | "utm_source" | "utm_medium" | "utm_campaign" | "utm_term" | "utm_content" | "landing_path" | "referrer">,
 ) => {
@@ -124,13 +160,31 @@ const buildNotes = (
   return blocks.length > 0 ? blocks.join("\n\n") : null;
 };
 
-const getDefaultFunnelAndStage = async () => {
-  const [funnel] = await sql`
-    select id, name
-    from public.funnels
-    order by is_default desc, created_at asc
-    limit 1
-  `;
+const getDefaultFunnelAndStage = async (targetFunnelName?: string | null) => {
+  let funnel: { id: string; name: string } | undefined;
+
+  if (targetFunnelName) {
+    const funnels = await sql`
+      select id, name
+      from public.funnels
+      order by is_default desc, created_at asc
+    `;
+
+    funnel = funnels.find((item) => normalizeTextKey(item.name as string) === normalizeTextKey(targetFunnelName)) as
+      | { id: string; name: string }
+      | undefined;
+
+    if (!funnel) {
+      throw new Error(`Funil publico nao encontrado para "${targetFunnelName}".`);
+    }
+  } else {
+    [funnel] = await sql`
+      select id, name
+      from public.funnels
+      order by is_default desc, created_at asc
+      limit 1
+    `;
+  }
 
   if (!funnel) {
     throw new Error("Nenhum funil disponivel para receber captacoes.");
@@ -183,13 +237,20 @@ serve(async (req) => {
     const companyOrPerson = normalizeOptionalString(body.company_or_person);
     const companyMaturity = normalizeOptionalString(body.company_maturity);
     const contactName = normalizeOptionalString(body.contact_name);
+    const targetFunnelName = normalizeOptionalString(body.target_funnel_name);
     const serviceTypes = normalizeServiceTypes(body.service_types);
+    const providedServiceDetails = normalizeOptionalString(body.service_details);
     const phone = normalizePhone(body.phone);
     const email = normalizeOptionalString(body.email);
     const employeeCount = normalizeOptionalString(body.employee_count);
     const employeeCountClt = normalizeOptionalString(body.employee_count_clt);
     const employeeCountPj = normalizeOptionalString(body.employee_count_pj);
     const cnpj = normalizeOptionalString(body.cnpj);
+    const city = normalizeOptionalString(body.city);
+    const uf = normalizeOptionalString(body.uf);
+    const segment = normalizeOptionalString(body.segment);
+    const segmentOther = normalizeOptionalString(body.segment_other);
+    const additionalContacts = normalizeAdditionalContacts(body.additional_contacts);
     const taxRegime = normalizeOptionalString(body.tax_regime);
     const monthlyRevenueManagerial = normalizeOptionalString(body.monthly_revenue_managerial);
     const monthlyRevenueFiscal = normalizeOptionalString(body.monthly_revenue_fiscal);
@@ -206,7 +267,7 @@ serve(async (req) => {
       ? ["Legalizacao de Empresas"]
       : serviceTypes;
     const normalizedCompanyOrPerson = companyOrPerson ?? (contactName ? `Abertura de empresa - ${contactName}` : null);
-    const serviceDetails = isOpeningCompany ? futureCompanyActivities : null;
+    const serviceDetails = isOpeningCompany ? futureCompanyActivities : providedServiceDetails;
     const hpField = normalizeOptionalString(body.hp_field);
 
     if (hpField) {
@@ -302,7 +363,7 @@ serve(async (req) => {
       referrer: normalizeOptionalString(body.referrer),
     });
 
-    const { funnelId, stageId } = await getDefaultFunnelAndStage();
+    const { funnelId, stageId } = await getDefaultFunnelAndStage(targetFunnelName);
 
     const duplicateRows = email
       ? await sql`
@@ -343,6 +404,11 @@ serve(async (req) => {
         employee_count_clt,
         employee_count_pj,
         cnpj,
+        city,
+        uf,
+        segment,
+        segment_other,
+        additional_contacts,
         tax_regime,
         monthly_revenue_managerial,
         monthly_revenue_fiscal,
@@ -371,6 +437,11 @@ serve(async (req) => {
         ${isOpeningCompany ? null : employeeCountClt},
         ${isOpeningCompany ? null : employeeCountPj},
         ${isOpeningCompany ? null : cnpj},
+        ${city},
+        ${uf},
+        ${segment},
+        ${segmentOther},
+        ${additionalContacts},
         ${isOpeningCompany ? null : taxRegime},
         ${isOpeningCompany ? null : monthlyRevenueManagerial},
         ${isOpeningCompany ? null : monthlyRevenueFiscal},

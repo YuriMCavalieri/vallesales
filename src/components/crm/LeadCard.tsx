@@ -12,6 +12,7 @@ import { getLeadPriority, needsActionToday, priorityMeta } from "@/lib/priority"
 interface Props {
   lead: Lead;
   isLost?: boolean;
+  isHighlighted?: boolean;
   profiles: Profile[];
   onClick: () => void;
   onDragStart: (e: React.DragEvent) => void;
@@ -41,7 +42,15 @@ function getFollowUpStatus(date: string | null | undefined): FollowUpStatus {
   return "futuro";
 }
 
-export const LeadCard = ({ lead, isLost = false, profiles, onClick, onDragStart, draggable = true }: Props) => {
+export const LeadCard = ({
+  lead,
+  isLost = false,
+  isHighlighted = false,
+  profiles,
+  onClick,
+  onDragStart,
+  draggable = true,
+}: Props) => {
   const owner = profiles.find((p) => p.id === lead.owner_id);
   const followUpStatus = getFollowUpStatus(lead.next_follow_up);
   const isOverdue = followUpStatus === "atrasado";
@@ -54,6 +63,7 @@ export const LeadCard = ({ lead, isLost = false, profiles, onClick, onDragStart,
 
   return (
     <Card
+      id={`lead-card-${lead.id}`}
       draggable={draggable}
       onDragStart={draggable ? onDragStart : undefined}
       onClick={onClick}
@@ -61,6 +71,7 @@ export const LeadCard = ({ lead, isLost = false, profiles, onClick, onDragStart,
         "group relative overflow-hidden p-3 pl-3.5 cursor-pointer bg-card border shadow-xs",
         "hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200",
         draggable && "active:cursor-grabbing active:scale-[0.99]",
+        isHighlighted && "border-accent ring-2 ring-accent/35 shadow-[0_0_0_4px_hsl(var(--accent)/0.14)]",
         // Destaques de atenção (prioridade: atrasado > quente > hoje)
         isOverdue && "border-destructive/40 ring-1 ring-destructive/20 bg-destructive/[0.02]",
         !isOverdue && isHot && "border-temp-quente/45 ring-1 ring-temp-quente/25 shadow-[0_0_0_3px_hsl(var(--temp-quente)/0.08)]",

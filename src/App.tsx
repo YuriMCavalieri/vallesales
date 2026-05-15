@@ -16,6 +16,7 @@ import Configuracoes from "./pages/Configuracoes.tsx";
 import AguardandoAprovacao from "./pages/AguardandoAprovacao.tsx";
 import Auth from "./pages/Auth.tsx";
 import PublicLeadForm from "./pages/PublicLeadForm.tsx";
+import PublicCwkForm from "./pages/PublicCwkForm.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient({
@@ -54,6 +55,8 @@ const App = () => (
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/captacao" element={<PublicLeadForm />} />
                   <Route path="/fale-conosco" element={<PublicLeadForm />} />
+                  <Route path="/cwk/ficha-cadastral" element={<PublicCwkForm />} />
+                  <Route path="/ficha-cwk" element={<PublicCwkForm />} />
                   <Route path="/aguardando-aprovacao" element={<ProtectedRoute><AguardandoAprovacao /></ProtectedRoute>} />
                   <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                   <Route path="/contatos" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />

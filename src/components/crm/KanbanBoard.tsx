@@ -33,6 +33,7 @@ interface Props {
   stages: PipelineStage[];
   leads: Lead[];
   profiles: Profile[];
+  highlightedLeadId?: string | null;
   onSelectLead: (lead: Lead) => void;
   onAddInStage: (stageId: string) => void;
   canAddLead: boolean;
@@ -57,6 +58,7 @@ export const KanbanBoard = ({
   stages,
   leads,
   profiles,
+  highlightedLeadId = null,
   onSelectLead,
   onAddInStage,
   canAddLead,
@@ -527,6 +529,7 @@ export const KanbanBoard = ({
                             lead={lead}
                             isLost={stage.is_lost}
                             profiles={profiles}
+                            isHighlighted={highlightedLeadId === lead.id}
                             onClick={() => onSelectLead(lead)}
                             draggable={canMoveLead(lead)}
                             onDragStart={(event) => {

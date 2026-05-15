@@ -68,6 +68,7 @@ import { cn } from "@/lib/utils";
 import { startOfLocalDay } from "@/lib/date";
 import { buildLeadSearchText } from "@/lib/lead-search";
 import { needsActionToday } from "@/lib/priority";
+import { useSearchParams } from "react-router-dom";
 
 type StatusFilter = "todos" | "atrasados" | "sem_contato" | "follow_hoje" | "acao_hoje";
 
@@ -86,6 +87,7 @@ const Index = () => {
   const profiles = useProfiles();
   const archiveLead = useArchiveLead();
   const perms = usePermissions();
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeFunnelReady = !funnelLoading && !!activeFunnelId && !!activeFunnel;
   const stages = useStages(activeFunnelId, activeFunnelReady);
   const leads = useLeads(activeFunnelId, activeFunnelReady);
@@ -101,6 +103,7 @@ const Index = () => {
   const [formSessionKey, setFormSessionKey] = useState(0);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [highlightedLeadId, setHighlightedLeadId] = useState<string | null>(null);
   const [funnelDialogOpen, setFunnelDialogOpen] = useState(false);
   const [funnelMenuOpen, setFunnelMenuOpen] = useState(false);
   const [newFunnelName, setNewFunnelName] = useState("");
@@ -202,6 +205,48 @@ const Index = () => {
     if (!perms.canEditOwnLead) return false;
     return lead.owner_id === user?.id || lead.created_by === user?.id;
   }, [perms.canEditAnyLead, perms.canEditOwnLead, user?.id]);
+
+  useEffect(() => {
+    const notificationFunnelId = searchParams.get("funnelId");
+    if (!notificationFunnelId || funnelLoading || activeFunnelId === notificationFunnelId) return;
+
+    const hasAccessToFunnel = accessibleFunnels.some((funnel) => funnel.id === notificationFunnelId);
+    if (hasAccessToFunnel) {
+      setActiveFunnelId(notificationFunnelId);
+    }
+  }, [accessibleFunnels, activeFunnelId, funnelLoading, searchParams, setActiveFunnelId]);
+
+  useEffect(() => {
+    const notificationLeadId = searchParams.get("leadId");
+    if (!notificationLeadId || leads.isLoading) return;
+
+    const leadFromNotification = (leads.data ?? []).find((lead) => lead.id === notificationLeadId);
+    if (!leadFromNotification) return;
+
+    setSelectedLead(leadFromNotification);
+    setDetailsOpen(true);
+    setHighlightedLeadId(notificationLeadId);
+
+    window.setTimeout(() => {
+      document.getElementById(`lead-card-${notificationLeadId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest",
+      });
+    }, 150);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("leadId");
+    nextParams.delete("funnelId");
+    setSearchParams(nextParams, { replace: true });
+  }, [leads.data, leads.isLoading, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!highlightedLeadId) return;
+
+    const timeoutId = window.setTimeout(() => setHighlightedLeadId(null), 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [highlightedLeadId]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -734,6 +779,7 @@ const Index = () => {
                 stages={stages.data ?? []}
                 leads={filteredLeads}
                 profiles={profiles.data ?? []}
+                highlightedLeadId={highlightedLeadId}
                 onSelectLead={openDetails}
                 onAddInStage={(stageId) => openNew(stageId)}
                 canAddLead={perms.canCreateLead}

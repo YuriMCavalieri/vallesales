@@ -705,10 +705,11 @@ serve(async (req) => {
       if (Object.prototype.hasOwnProperty.call(updates, "stage_id") && updated.stage_id !== current.stage_id) {
         const oldStage = await getStageName(current.stage_id);
         const newStage = await getStageName(updated.stage_id);
+        const leadLabel = updated.company_or_person ?? updated.contact_name ?? "Lead";
         await logActivity(
           id,
           "stage_change",
-          `Etapa alterada de "${oldStage}" para "${newStage}"`,
+          `${leadLabel}: etapa alterada de "${oldStage}" para "${newStage}"`,
           userId,
           { from: current.stage_id, to: updated.stage_id },
         );

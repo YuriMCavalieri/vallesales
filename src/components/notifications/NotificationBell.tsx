@@ -4,6 +4,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 const formatRelativeTime = (value: string) => {
   const date = new Date(value);
@@ -23,12 +24,18 @@ const formatRelativeTime = (value: string) => {
 export const NotificationBell = () => {
   const [open, setOpen] = useState(false);
   const { notifications, unreadCount, loading, error, markAllAsRead } = useNotifications();
+  const navigate = useNavigate();
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     if (nextOpen && unreadCount > 0 && !markAllAsRead.isPending) {
       markAllAsRead.mutate();
     }
+  };
+
+  const handleNotificationClick = (href: string) => {
+    setOpen(false);
+    navigate(href);
   };
 
   return (
@@ -86,10 +93,12 @@ export const NotificationBell = () => {
           ) : (
             <div className="space-y-2">
               {notifications.map((notification) => (
-                <div
+                <button
                   key={notification.id}
+                  type="button"
+                  onClick={() => handleNotificationClick(notification.href)}
                   className={cn(
-                    "rounded-lg border border-border/80 px-3 py-3",
+                    "w-full rounded-lg border border-border/80 px-3 py-3 text-left transition-colors hover:bg-muted/40",
                     notification.unread && "bg-accent/5 border-accent/25",
                   )}
                 >
@@ -108,16 +117,20 @@ export const NotificationBell = () => {
 
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
+                      <Users className="h-3.5 w-3.5" />
+                      {notification.leadName}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
                       <Building2 className="h-3.5 w-3.5" />
                       {notification.funnelName}
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      <Users className="h-3.5 w-3.5" />
+                      <Bell className="h-3.5 w-3.5" />
                       {notification.categoryLabel}
                     </span>
                     {notification.ownActivity && <span>Gerado por voce</span>}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}

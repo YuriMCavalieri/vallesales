@@ -196,6 +196,7 @@ export const LeadDetailsSheet = ({
   const additionalContacts = parseAdditionalContacts(lead.additional_contacts);
   const sourceState = parseLeadSource(lead.source);
   const isOpeningCompanyLead = lead.company_maturity === "opening_company";
+  const isCwkLead = sourceState.source.toLowerCase().includes("cwk");
   const assignableIds = new Set(assignableProfiles.map((profile) => profile.id));
   const ownerOptions = profiles.filter(
     (profile) => assignableIds.has(profile.id) || profile.id === lead.owner_id,
@@ -486,7 +487,9 @@ export const LeadDetailsSheet = ({
             lead.accounting_pain_points) && (
             <Card className="space-y-3 border-border/70 p-4">
               <div>
-                <h4 className="text-sm font-semibold text-foreground">Diagnostico financeiro e operacional</h4>
+                <h4 className="text-sm font-semibold text-foreground">
+                  {isCwkLead ? "Diagnostico CWK" : "Diagnostico financeiro e operacional"}
+                </h4>
                 <p className="text-xs text-muted-foreground">
                   Informações complementares coletadas no formulário comercial.
                 </p>

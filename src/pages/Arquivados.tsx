@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import type { Lead } from "@/types/crm";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useSearchParams } from "react-router-dom";
 import {
   ArchiveRestore,
   BriefcaseBusiness,
@@ -71,8 +72,9 @@ const formatArchivedDateRangeLabel = (range?: DateRange) => {
 };
 
 const ArchivedLeads = () => {
-  const { activeFunnelId, funnels, loading: funnelLoading } = useActiveFunnel();
+  const { activeFunnelId, funnels, loading: funnelLoading, setActiveFunnelId } = useActiveFunnel();
   const perms = usePermissions();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ArchivedSituationFilter>("won");
   const [archivedDateRange, setArchivedDateRange] = useState<DateRange | undefined>();
@@ -90,6 +92,15 @@ const ArchivedLeads = () => {
   const reopenLead = useReopenLead();
 
   useEffect(() => {
+    const notificationFunnelId = searchParams.get("funnelId");
+    if (!notificationFunnelId || funnelLoading || activeFunnelId === notificationFunnelId) return;
+
+    if (accessibleFunnelIds.includes(notificationFunnelId)) {
+      setActiveFunnelId(notificationFunnelId);
+    }
+  }, [accessibleFunnelIds, activeFunnelId, funnelLoading, searchParams, setActiveFunnelId]);
+
+  useEffect(() => {
     if (accessibleFunnelIds.length === 0) {
       setSelectedFunnelIds([]);
       return;
@@ -102,6 +113,22 @@ const ArchivedLeads = () => {
 
     setSelectedFunnelIds([accessibleFunnelIds[0]]);
   }, [accessibleFunnelIds, activeFunnelId]);
+
+  useEffect(() => {
+    const notificationLeadId = searchParams.get("leadId");
+    if (!notificationLeadId || leads.isLoading) return;
+
+    const leadFromNotification = (leads.data ?? []).find((lead) => lead.id === notificationLeadId);
+    if (!leadFromNotification) return;
+
+    setSelectedLead(leadFromNotification);
+    setDetailsOpen(true);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("leadId");
+    nextParams.delete("funnelId");
+    setSearchParams(nextParams, { replace: true });
+  }, [leads.data, leads.isLoading, searchParams, setSearchParams]);
 
   const allFunnelsSelected = hasAvailableFunnels && selectedFunnelIds.length === accessibleFunnelIds.length;
   const selectedFunnels = useMemo(

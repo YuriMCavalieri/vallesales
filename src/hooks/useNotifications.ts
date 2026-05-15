@@ -15,7 +15,7 @@ import {
 } from "@/lib/notifications";
 import type { Lead, LeadActivity } from "@/types/crm";
 
-type NotificationLeadSummary = Pick<Lead, "id" | "company_or_person" | "contact_name" | "funnel_id">;
+type NotificationLeadSummary = Pick<Lead, "id" | "company_or_person" | "contact_name" | "funnel_id" | "is_archived">;
 type NotificationFeed = {
   activities: Pick<LeadActivity, "id" | "lead_id" | "type" | "description" | "created_at" | "created_by">[];
   leads: NotificationLeadSummary[];
@@ -24,6 +24,7 @@ type NotificationFeed = {
 export type CrmNotification = {
   id: string;
   leadId: string;
+  funnelId: string;
   type: LeadActivityType;
   title: string;
   description: string;
@@ -34,6 +35,7 @@ export type CrmNotification = {
   funnelName: string;
   unread: boolean;
   ownActivity: boolean;
+  href: string;
 };
 
 const MAX_NOTIFICATIONS = 30;
@@ -44,6 +46,44 @@ const pickLeadLabel = (lead: NotificationLeadSummary | undefined) =>
 
 const buildFallbackDescription = (title: string, leadName: string, funnelName: string) =>
   `${title} em ${leadName} no funil ${funnelName}.`;
+
+const buildNotificationHref = (lead: NotificationLeadSummary) => {
+  const params = new URLSearchParams({
+    leadId: lead.id,
+    funnelId: lead.funnel_id,
+  });
+
+  return `${lead.is_archived ? "/arquivados" : "/"}?${params.toString()}`;
+};
+
+const buildNotificationDescription = ({
+  activity,
+  leadName,
+  funnelName,
+  title,
+}: {
+  activity: Pick<LeadActivity, "type" | "description">;
+  leadName: string;
+  funnelName: string;
+  title: string;
+}) => {
+  const rawDescription = activity.description?.trim();
+  if (!rawDescription) {
+    return buildFallbackDescription(title, leadName, funnelName);
+  }
+
+  const normalizedDescription = rawDescription.toLocaleLowerCase("pt-BR");
+  const normalizedLeadName = leadName.toLocaleLowerCase("pt-BR");
+  if (normalizedDescription.includes(normalizedLeadName)) {
+    return rawDescription;
+  }
+
+  if (activity.type === "stage_change") {
+    return `${leadName}: ${rawDescription}`;
+  }
+
+  return rawDescription;
+};
 
 export const useNotifications = () => {
   const { user } = useAuth();
@@ -71,7 +111,7 @@ export const useNotifications = () => {
 
       const { data: leads, error: leadsError } = await supabase
         .from("leads")
-        .select("id, company_or_person, contact_name, funnel_id")
+        .select("id, company_or_person, contact_name, funnel_id, is_archived")
         .in("id", leadIds);
       if (leadsError) throw leadsError;
 
@@ -123,9 +163,15 @@ export const useNotifications = () => {
         return [{
           id: activity.id,
           leadId: activity.lead_id,
+          funnelId: lead.funnel_id,
           type: activity.type,
           title,
-          description: activity.description?.trim() || buildFallbackDescription(title, leadName, funnelName),
+          description: buildNotificationDescription({
+            activity,
+            leadName,
+            funnelName,
+            title,
+          }),
           category,
           categoryLabel: categoryLabels.get(category) ?? "Notificacao",
           createdAt: activity.created_at,
@@ -133,6 +179,7 @@ export const useNotifications = () => {
           funnelName,
           unread: Number.isFinite(createdAtMs) && createdAtMs > lastReadAtMs,
           ownActivity: activity.created_by === user?.id,
+          href: buildNotificationHref(lead),
         } satisfies CrmNotification];
       })
       .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
