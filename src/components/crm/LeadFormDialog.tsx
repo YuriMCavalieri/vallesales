@@ -77,6 +77,11 @@ type FormState = {
 
 type FormErrors = Partial<Record<"funnel_id" | "company_or_person" | "contact_name" | "phone" | "stage_id" | "indication_by", string>>;
 
+type PendingAttachment = {
+  id: string;
+  file: File;
+};
+
 const tempDot: Record<string, string> = {
   frio: "bg-temp-frio",
   morno: "bg-temp-morno",
@@ -172,12 +177,9 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
   const update = useUpdateLead();
   const archiveLead = useArchiveLead();
   const firstFieldRef = useRef<HTMLInputElement>(null);
-  const payrollReportInputRef = useRef<HTMLInputElement>(null);
-  const trialBalanceInputRef = useRef<HTMLInputElement>(null);
 
   const [errors, setErrors] = useState<FormErrors>({});
-  const [payrollReportFile, setPayrollReportFile] = useState<File | null>(null);
-  const [trialBalanceFile, setTrialBalanceFile] = useState<File | null>(null);
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [lossReasonDialogOpen, setLossReasonDialogOpen] = useState(false);
   const [wonArchiveDialogOpen, setWonArchiveDialogOpen] = useState(false);
   const [lossReason, setLossReason] = useState("");
@@ -186,13 +188,10 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
     if (!open) return;
     setForm(buildInitialForm(lead, defaultStageId, activeFunnelId));
     setErrors({});
-    setPayrollReportFile(null);
-    setTrialBalanceFile(null);
+    setPendingAttachments([]);
     setLossReasonDialogOpen(false);
     setWonArchiveDialogOpen(false);
     setLossReason("");
-    if (payrollReportInputRef.current) payrollReportInputRef.current.value = "";
-    if (trialBalanceInputRef.current) trialBalanceInputRef.current.value = "";
     setTimeout(() => firstFieldRef.current?.focus(), 50);
   }, [activeFunnelId, defaultStageId, lead, open]);
 
@@ -268,6 +267,22 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
         contact.id === contactId ? { ...contact, ...patch } : contact,
       ),
     });
+  };
+
+  const addPendingAttachments = (files: FileList | null) => {
+    if (!files?.length) return;
+
+    setPendingAttachments((current) => [
+      ...current,
+      ...Array.from(files).map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+      })),
+    ]);
+  };
+
+  const removePendingAttachment = (attachmentId: string) => {
+    setPendingAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId));
   };
 
   const validateForm = () => {
@@ -360,34 +375,18 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
       qc.invalidateQueries({ queryKey: ["crm_notifications_feed"] });
     }
 
-    const pendingUploads = [
-      payrollReportFile
-        ? {
-            file: payrollReportFile,
-            displayName: `Relatorio Geral da Folha - ${payrollReportFile.name}`,
-            activityDescription: `Anexo enviado no cadastro: Relatorio Geral da Folha - ${payrollReportFile.name}`,
-          }
-        : null,
-      trialBalanceFile
-        ? {
-            file: trialBalanceFile,
-            displayName: `Balancete Mais Recente - ${trialBalanceFile.name}`,
-            activityDescription: `Anexo enviado no cadastro: Balancete Mais Recente - ${trialBalanceFile.name}`,
-          }
-        : null,
-    ].filter((item): item is { file: File; displayName: string; activityDescription: string } => item !== null);
+    const pendingUploads = pendingAttachments.map((attachment) => attachment.file);
 
     if (pendingUploads.length > 0) {
       const failedUploads: string[] = [];
 
-      for (const uploadItem of pendingUploads) {
+      for (const file of pendingUploads) {
         try {
           await uploadLeadAttachmentFile({
             leadId: savedLead.id,
-            file: uploadItem.file,
+            file,
             userId: user?.id,
-            displayName: uploadItem.displayName,
-            activityDescription: uploadItem.activityDescription,
+            displayName: file.name,
           });
         } catch (error) {
           failedUploads.push(error instanceof Error ? error.message : "Falha ao enviar anexo.");
@@ -1040,30 +1039,49 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
               </FieldBlock>
 
               <FieldBlock className="md:col-span-2">
-                <Label>Relatorio Geral da Folha do ultimo mes</Label>
+                <Label>Anexos</Label>
                 <Input
-                  ref={payrollReportInputRef}
                   type="file"
+                  multiple
                   accept=".pdf,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
-                  onChange={(event) => setPayrollReportFile(event.target.files?.[0] ?? null)}
+                  onChange={(event) => {
+                    addPendingAttachments(event.target.files);
+                    event.currentTarget.value = "";
+                  }}
                 />
                 <p className="text-xs text-muted-foreground">
                   Se você selecionar um arquivo, ele será anexado ao lead assim que o cadastro for salvo.
                 </p>
               </FieldBlock>
 
-              <FieldBlock className="md:col-span-2">
-                <Label>Balancete mais recente</Label>
-                <Input
-                  ref={trialBalanceInputRef}
-                  type="file"
-                  accept=".pdf,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
-                  onChange={(event) => setTrialBalanceFile(event.target.files?.[0] ?? null)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  O documento sera anexado ao lead no mesmo fluxo de salvamento.
-                </p>
-              </FieldBlock>
+              {pendingAttachments.length > 0 ? (
+                <FieldBlock className="md:col-span-2">
+                  <div className="space-y-2 rounded-lg border border-border/70 bg-background/60 p-3">
+                    {pendingAttachments.map((attachment) => (
+                      <div
+                        key={attachment.id}
+                        className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{attachment.file.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(attachment.file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removePendingAttachment(attachment.id)}
+                          aria-label={`Remover anexo ${attachment.file.name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </FieldBlock>
+              ) : null}
             </div>
           </FormSection>
 
