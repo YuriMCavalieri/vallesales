@@ -263,6 +263,12 @@ serve(async (req) => {
     const futureCompanyActivities = normalizeOptionalString(body.future_company_activities);
     const source = normalizeOptionalString(body.source) ?? "Formulario site";
     const isOpeningCompany = companyMaturity === "opening_company";
+    const normalizedSourceKey = normalizeTextKey(source);
+    const normalizedTargetFunnelKey = normalizeTextKey(targetFunnelName);
+    const isCwkIntake =
+      normalizedSourceKey === "ficha cadastral cwk" ||
+      normalizedTargetFunnelKey.startsWith("cwk");
+    const requiresAccountingQualification = !isOpeningCompany && !isCwkIntake;
     const normalizedServiceTypes = isOpeningCompany
       ? ["Legalizacao de Empresas"]
       : serviceTypes;
@@ -307,48 +313,50 @@ serve(async (req) => {
         return fail("Informe o CNPJ da empresa.");
       }
 
-      if (!taxRegime) {
-        return fail("Informe o regime tributario atual.");
-      }
+      if (requiresAccountingQualification) {
+        if (!taxRegime) {
+          return fail("Informe o regime tributario atual.");
+        }
 
-      if (!monthlyRevenueManagerial) {
-        return fail("Informe o faturamento medio mensal gerencial.");
-      }
+        if (!monthlyRevenueManagerial) {
+          return fail("Informe o faturamento medio mensal gerencial.");
+        }
 
-      if (!monthlyRevenueFiscal) {
-        return fail("Informe o faturamento medio mensal fiscal.");
-      }
+        if (!monthlyRevenueFiscal) {
+          return fail("Informe o faturamento medio mensal fiscal.");
+        }
 
-      if (!monthlyInvoiceCount) {
-        return fail("Informe a quantidade media de NF emitidas por mes.");
-      }
+        if (!monthlyInvoiceCount) {
+          return fail("Informe a quantidade media de NF emitidas por mes.");
+        }
 
-      if (!employeeCountClt) {
-        return fail("Informe a quantidade media de funcionarios CLT.");
-      }
+        if (!employeeCountClt) {
+          return fail("Informe a quantidade media de funcionarios CLT.");
+        }
 
-      if (!employeeCountPj) {
-        return fail("Informe a quantidade media de profissionais PJ.");
-      }
+        if (!employeeCountPj) {
+          return fail("Informe a quantidade media de profissionais PJ.");
+        }
 
-      if (!payrollGrossValue) {
-        return fail("Informe o valor bruto medio da folha de pagamentos.");
-      }
+        if (!payrollGrossValue) {
+          return fail("Informe o valor bruto medio da folha de pagamentos.");
+        }
 
-      if (!bankAccountCount) {
-        return fail("Informe quantas contas bancarias a empresa possui.");
-      }
+        if (!bankAccountCount) {
+          return fail("Informe quantas contas bancarias a empresa possui.");
+        }
 
-      if (!bankAccountsSplit) {
-        return fail("Informe se as contas bancarias sao separadas por projeto ou centro de custo.");
-      }
+        if (!bankAccountsSplit) {
+          return fail("Informe se as contas bancarias sao separadas por projeto ou centro de custo.");
+        }
 
-      if (!financialSystem) {
-        return fail("Informe qual sistema financeiro a empresa utiliza.");
-      }
+        if (!financialSystem) {
+          return fail("Informe qual sistema financeiro a empresa utiliza.");
+        }
 
-      if (!accountingPainPoints) {
-        return fail("Informe as principais dores contabeis e a motivacao por trocar.");
+        if (!accountingPainPoints) {
+          return fail("Informe as principais dores contabeis e a motivacao por trocar.");
+        }
       }
     }
 

@@ -1,33 +1,35 @@
 import { useMemo, useState } from "react";
 import { z } from "zod";
-import { CheckCircle2, Loader2, Send } from "lucide-react";
+import { Check, CheckCircle2, Loader2, Send } from "lucide-react";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCnpj, formatPhone, isValidLeadPhone } from "@/lib/lead-form";
 import { UF_OPTIONS } from "@/lib/constants";
+import { formatCnpj, formatPhone, isValidLeadPhone } from "@/lib/lead-form";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import cwkLogo from "@/assets/cwk-logo.png";
 
 const CWK_UNIT_OPTIONS = [
-  { value: "CWK Lourdes", label: "CWK Lourdes" },
-  { value: "CWK Savassi", label: "CWK Savassi" },
-  { value: "CWK Santa Efigenia", label: "CWK Santa Efigenia" },
+  { value: "CWK Lourdes", label: "Lourdes" },
+  { value: "CWK Savassi", label: "Savassi" },
+  { value: "CWK Santa Efigenia", label: "Santa Efigenia" },
 ] as const;
 
 const CWK_PLAN_OPTIONS = [
-  { value: "virtual_fiscal", label: "Virtual Fiscal", serviceType: "Coworking - EscritÃ³rio Virtual" },
-  { value: "virtual_full", label: "Virtual Full", serviceType: "Coworking - EscritÃ³rio Virtual" },
-  { value: "part_time", label: "Part-time", serviceType: "Coworking - EstaÃ§Ã£o Compartilhada" },
-  { value: "full_time", label: "Full-time", serviceType: "Coworking - EstaÃ§Ã£o Compartilhada" },
+  { value: "virtual_fiscal", label: "Virtual Fiscal", serviceType: "Coworking - Escritorio Virtual" },
+  { value: "virtual_full", label: "Virtual Full", serviceType: "Coworking - Escritorio Virtual" },
+  { value: "part_time", label: "Part-time", serviceType: "Coworking - Estacao Compartilhada" },
+  { value: "full_time", label: "Full-time", serviceType: "Coworking - Estacao Compartilhada" },
   { value: "private", label: "Private", serviceType: "Coworking - Sala Privativa" },
-  { value: "meeting_room", label: "Sala de Reuniao", serviceType: "Coworking - Salas de ReuniÃ£o" },
+  { value: "meeting_room", label: "Sala de Reuniao", serviceType: "Coworking - Salas de Reuniao" },
 ] as const;
 
 const yesNoOptions = [
@@ -35,121 +37,118 @@ const yesNoOptions = [
   { value: "Nao", label: "Nao" },
 ] as const;
 
-const legalRepresentativeSchema = z.object({
+const offeringHighlights = [
+  {
+    title: "Escritorio Virtual",
+    description: "Presenca empresarial com praticidade.",
+    items: ["Central de recados", "Endereco comercial"],
+  },
+  {
+    title: "Escritorio Compartilhado",
+    description: "Flexibilidade com estrutura pronta.",
+    items: ["Mobilidade", "Networking"],
+  },
+  {
+    title: "Sala Privativa",
+    description: "Mais foco e autonomia para a equipe.",
+    items: ["Privacidade", "Reducao de custos"],
+  },
+  {
+    title: "Salas para Reunioes",
+    description: "Espacos preparados para encontros importantes.",
+    items: ["Multimidia", "Servico de copa"],
+  },
+] as const;
+
+const addressRequiredPlans = new Set(["virtual_fiscal", "virtual_full"]);
+
+const representativeSchema = z.object({
   name: z.string().trim(),
-  rg: z.string().trim(),
   cpf: z.string().trim(),
+  email: z.string().trim(),
+  phone: z.string().trim(),
+});
+
+const contactSchema = z.object({
+  name: z.string().trim(),
+  email: z.string().trim(),
+  phone: z.string().trim(),
+});
+
+const stepOneSchema = z.object({
+  unit: z.string().trim().min(1, "Selecione a unidade CWK."),
+  plan: z.string().trim().min(1, "Selecione o plano desejado."),
+  company_or_person: z.string().trim().min(2, "Informe a razao social."),
+  trade_name: z.string().trim().min(2, "Informe o nome fantasia."),
+  cnpj: z.string().trim().min(14, "Informe o CNPJ da empresa."),
+  main_activity: z.string().trim().min(2, "Informe a atividade principal."),
+  company_email: z.string().trim().email("Informe um e-mail valido da empresa."),
+  company_phone: z.string().trim(),
+  contract_change_interest: z.string().trim().min(1, "Informe se ha interesse em abertura ou alteracao contratual."),
+  hp_field: z.string().trim().max(0, "Campo invalido."),
+});
+
+const stepTwoSchema = z.object({
   address: z.string().trim(),
   neighborhood: z.string().trim(),
   city: z.string().trim(),
   uf: z.string().trim(),
   cep: z.string().trim(),
-  birth_date: z.string().trim(),
-  email: z.string().trim(),
-  phone: z.string().trim(),
-});
-
-const simpleContactSchema = z.object({
-  name: z.string().trim(),
-  phones: z.string().trim(),
-  emails: z.string().trim(),
-});
-
-const stepOneSchema = z.object({
-  unit: z.string().trim().min(1, "Selecione a unidade da CWK."),
-  plan: z.string().trim().min(1, "Selecione o plano desejado."),
-  company_or_person: z.string().trim().min(2, "Informe a razao social."),
-  trade_name: z.string().trim().min(2, "Informe o nome fantasia."),
-  main_activity: z.string().trim().min(2, "Informe a atividade principal."),
-  cnpj: z.string().trim().min(14, "Informe o CNPJ da empresa."),
-  hp_field: z.string().trim().max(0, "Campo invalido."),
-});
-
-const stepTwoSchema = z.object({
-  address: z.string().trim().min(5, "Informe o endereco da empresa."),
-  neighborhood: z.string().trim().min(2, "Informe o bairro."),
-  city: z.string().trim().min(2, "Informe a cidade."),
-  uf: z.string().trim().min(2, "Selecione a UF."),
-  cep: z.string().trim().min(8, "Informe o CEP."),
-  company_phone: z.string().trim(),
-  company_email: z.string().trim().email("Informe um e-mail valido da empresa."),
-  retains_issqn: z.string().trim().min(1, "Informe se a empresa retem ISSQN."),
-  contract_change_interest: z.string().trim().min(1, "Informe se ha interesse em abertura ou alteracao contratual."),
+  representative_one: representativeSchema,
+  representative_two: representativeSchema,
 });
 
 const stepThreeSchema = z.object({
-  representative_one: legalRepresentativeSchema.superRefine((value, ctx) => {
-    if (!value.name) ctx.addIssue({ code: "custom", message: "Informe o nome do representante legal principal." });
-    if (!value.cpf) ctx.addIssue({ code: "custom", message: "Informe o CPF do representante legal principal." });
-    if (!value.email) ctx.addIssue({ code: "custom", message: "Informe o e-mail do representante legal principal." });
-    if (!value.phone) ctx.addIssue({ code: "custom", message: "Informe o telefone do representante legal principal." });
-  }),
-  representative_two: legalRepresentativeSchema,
-});
-
-const stepFourSchema = z.object({
+  financial_contact: contactSchema,
+  commercial_contact: contactSchema,
   message_contact_name: z.string().trim(),
   message_contact_email: z.string().trim(),
   message_contact_phone: z.string().trim(),
-  financial_contact: simpleContactSchema,
-  commercial_contact: simpleContactSchema.superRefine((value, ctx) => {
-    if (!value.name) ctx.addIssue({ code: "custom", message: "Informe o nome do contato comercial." });
-    if (!value.phones) ctx.addIssue({ code: "custom", message: "Informe o telefone do contato comercial." });
-    if (!value.emails) ctx.addIssue({ code: "custom", message: "Informe o e-mail do contato comercial." });
-  }),
   notes: z.string().trim(),
+  declarationAccepted: z.boolean(),
 });
 
-type LegalRepresentativeForm = z.infer<typeof legalRepresentativeSchema>;
-type SimpleContactForm = z.infer<typeof simpleContactSchema>;
+type RepresentativeForm = z.infer<typeof representativeSchema>;
+type ContactForm = z.infer<typeof contactSchema>;
 
 type FormState = {
   unit: string;
   plan: string;
   company_or_person: string;
   trade_name: string;
-  main_activity: string;
   cnpj: string;
+  main_activity: string;
+  company_email: string;
+  company_phone: string;
+  contract_change_interest: string;
   address: string;
   neighborhood: string;
   city: string;
   uf: string;
   cep: string;
-  company_phone: string;
-  company_email: string;
-  state_registration: string;
-  municipal_registration: string;
-  retains_issqn: string;
-  contract_change_interest: string;
-  representative_one: LegalRepresentativeForm;
-  representative_two: LegalRepresentativeForm;
+  representative_one: RepresentativeForm;
+  representative_two: RepresentativeForm;
+  financial_contact: ContactForm;
+  commercial_contact: ContactForm;
   message_contact_name: string;
   message_contact_email: string;
   message_contact_phone: string;
-  financial_contact: SimpleContactForm;
-  commercial_contact: SimpleContactForm;
   notes: string;
+  declarationAccepted: boolean;
   hp_field: string;
 };
 
-const emptyRepresentative = (): LegalRepresentativeForm => ({
+const emptyRepresentative = (): RepresentativeForm => ({
   name: "",
-  rg: "",
   cpf: "",
-  address: "",
-  neighborhood: "",
-  city: "",
-  uf: "",
-  cep: "",
-  birth_date: "",
   email: "",
   phone: "",
 });
 
-const emptyContact = (): SimpleContactForm => ({
+const emptyContact = (): ContactForm => ({
   name: "",
-  phones: "",
-  emails: "",
+  email: "",
+  phone: "",
 });
 
 const initialForm: FormState = {
@@ -157,27 +156,25 @@ const initialForm: FormState = {
   plan: "",
   company_or_person: "",
   trade_name: "",
-  main_activity: "",
   cnpj: "",
+  main_activity: "",
+  company_email: "",
+  company_phone: "",
+  contract_change_interest: "",
   address: "",
   neighborhood: "",
   city: "",
   uf: "",
   cep: "",
-  company_phone: "",
-  company_email: "",
-  state_registration: "",
-  municipal_registration: "",
-  retains_issqn: "",
-  contract_change_interest: "",
   representative_one: emptyRepresentative(),
   representative_two: emptyRepresentative(),
+  financial_contact: emptyContact(),
+  commercial_contact: emptyContact(),
   message_contact_name: "",
   message_contact_email: "",
   message_contact_phone: "",
-  financial_contact: emptyContact(),
-  commercial_contact: emptyContact(),
   notes: "",
+  declarationAccepted: false,
   hp_field: "",
 };
 
@@ -219,50 +216,41 @@ const formatCpf = (value: string) => {
 
 const isValidCpf = (value: string) => digitsOnly(value).length === 11;
 
-const splitFirstValue = (value: string) =>
-  value
-    .split(/\r?\n|,|;|\//)
-    .map((item) => item.trim())
-    .find(Boolean) ?? "";
-
-const hasRepresentativeData = (representative: LegalRepresentativeForm) =>
+const hasRepresentativeData = (representative: RepresentativeForm) =>
   Object.values(representative).some((value) => value.trim());
 
-const hasContactData = (contact: SimpleContactForm) =>
+const hasContactData = (contact: ContactForm) =>
   Object.values(contact).some((value) => value.trim());
 
-const formatRepresentativeBlock = (title: string, representative: LegalRepresentativeForm) => {
+const isAddressRequired = (plan: string, contractChangeInterest: string) =>
+  addressRequiredPlans.has(plan) || contractChangeInterest === "Sim";
+
+const formatRepresentativeBlock = (title: string, representative: RepresentativeForm) => {
   if (!hasRepresentativeData(representative)) return null;
 
   return [
     title,
     `Nome: ${representative.name || "-"}`,
-    `RG: ${representative.rg || "-"}`,
     `CPF: ${representative.cpf || "-"}`,
-    `Data de nascimento: ${representative.birth_date || "-"}`,
-    `Telefone: ${representative.phone || "-"}`,
     `E-mail: ${representative.email || "-"}`,
-    `Endereco: ${representative.address || "-"}`,
-    `Bairro: ${representative.neighborhood || "-"}`,
-    `Cidade/UF: ${[representative.city, representative.uf].filter(Boolean).join("/") || "-"}`,
-    `CEP: ${representative.cep || "-"}`,
+    `Telefone: ${representative.phone || "-"}`,
   ].join("\n");
 };
 
-const formatSimpleContactBlock = (title: string, contact: SimpleContactForm) => {
+const formatContactBlock = (title: string, contact: ContactForm) => {
   if (!hasContactData(contact)) return null;
 
   return [
     title,
     `Nome: ${contact.name || "-"}`,
-    `Telefones: ${contact.phones || "-"}`,
-    `E-mails: ${contact.emails || "-"}`,
+    `E-mail: ${contact.email || "-"}`,
+    `Telefone: ${contact.phone || "-"}`,
   ].join("\n");
 };
 
 const PublicCwkForm = () => {
   const [form, setForm] = useState<FormState>(initialForm);
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -287,7 +275,8 @@ const PublicCwkForm = () => {
     () => CWK_PLAN_OPTIONS.find((item) => item.value === form.plan) ?? null,
     [form.plan],
   );
-  const progressPercentage = Math.round((step / 4) * 100);
+  const progressPercentage = Math.round((step / 3) * 100);
+  const addressRequired = isAddressRequired(form.plan, form.contract_change_interest);
 
   const patchForm = (patch: Partial<FormState>) => {
     setForm((current) => ({ ...current, ...patch }));
@@ -295,7 +284,7 @@ const PublicCwkForm = () => {
 
   const patchRepresentative = (
     key: "representative_one" | "representative_two",
-    patch: Partial<LegalRepresentativeForm>,
+    patch: Partial<RepresentativeForm>,
   ) => {
     setForm((current) => ({
       ...current,
@@ -308,7 +297,7 @@ const PublicCwkForm = () => {
 
   const patchContact = (
     key: "financial_contact" | "commercial_contact",
-    patch: Partial<SimpleContactForm>,
+    patch: Partial<ContactForm>,
   ) => {
     setForm((current) => ({
       ...current,
@@ -322,16 +311,7 @@ const PublicCwkForm = () => {
   const validateStepOne = () => {
     const parsed = stepOneSchema.safeParse(form);
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "Revise os campos desta etapa.");
-      return false;
-    }
-    return true;
-  };
-
-  const validateStepTwo = () => {
-    const parsed = stepTwoSchema.safeParse(form);
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "Revise os campos desta etapa.");
+      toast.error(parsed.error.issues[0]?.message ?? "Revise os campos obrigatorios.");
       return false;
     }
 
@@ -343,47 +323,94 @@ const PublicCwkForm = () => {
     return true;
   };
 
-  const validateStepThree = () => {
-    const parsed = stepThreeSchema.safeParse(form);
+  const validateStepTwo = () => {
+    const parsed = stepTwoSchema.safeParse(form);
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "Revise os campos dos representantes legais.");
+      toast.error(parsed.error.issues[0]?.message ?? "Revise os dados do representante legal.");
       return false;
     }
 
+    if (addressRequired) {
+      if (!form.address.trim()) {
+        toast.error("Informe o endereco da empresa.");
+        return false;
+      }
+      if (!form.neighborhood.trim()) {
+        toast.error("Informe o bairro da empresa.");
+        return false;
+      }
+      if (!form.city.trim()) {
+        toast.error("Informe a cidade da empresa.");
+        return false;
+      }
+      if (!form.uf.trim()) {
+        toast.error("Selecione a UF da empresa.");
+        return false;
+      }
+      if (digitsOnly(form.cep).length < 8) {
+        toast.error("Informe um CEP valido.");
+        return false;
+      }
+    }
+
+    if (!form.representative_one.name.trim()) {
+      toast.error("Informe o nome do representante legal principal.");
+      return false;
+    }
     if (!isValidCpf(form.representative_one.cpf)) {
       toast.error("Informe um CPF valido para o representante legal principal.");
       return false;
     }
-
+    if (!form.representative_one.email.trim()) {
+      toast.error("Informe o e-mail do representante legal principal.");
+      return false;
+    }
     if (!isValidLeadPhone(form.representative_one.phone)) {
       toast.error("Informe um telefone valido para o representante legal principal.");
       return false;
     }
 
-    const representativeTwoHasData = hasRepresentativeData(form.representative_two);
-    if (representativeTwoHasData && form.representative_two.cpf && !isValidCpf(form.representative_two.cpf)) {
-      toast.error("O CPF do segundo representante legal esta invalido.");
-      return false;
-    }
-
-    if (representativeTwoHasData && form.representative_two.phone && !isValidLeadPhone(form.representative_two.phone)) {
-      toast.error("O telefone do segundo representante legal esta invalido.");
-      return false;
+    if (hasRepresentativeData(form.representative_two)) {
+      if (form.representative_two.cpf && !isValidCpf(form.representative_two.cpf)) {
+        toast.error("O CPF do segundo representante legal esta invalido.");
+        return false;
+      }
+      if (form.representative_two.phone && !isValidLeadPhone(form.representative_two.phone)) {
+        toast.error("O telefone do segundo representante legal esta invalido.");
+        return false;
+      }
     }
 
     return true;
   };
 
-  const validateStepFour = () => {
-    const parsed = stepFourSchema.safeParse(form);
+  const validateStepThree = () => {
+    const parsed = stepThreeSchema.safeParse(form);
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "Revise os contatos finais desta ficha.");
+      toast.error(parsed.error.issues[0]?.message ?? "Revise os contatos finais.");
       return false;
     }
 
-    const commercialPhone = splitFirstValue(form.commercial_contact.phones);
-    if (!isValidLeadPhone(commercialPhone)) {
-      toast.error("Informe um telefone valido para o contato comercial.");
+    if (!form.financial_contact.name.trim()) {
+      toast.error("Informe o nome do contato financeiro.");
+      return false;
+    }
+    if (!form.financial_contact.email.trim()) {
+      toast.error("Informe o e-mail do contato financeiro.");
+      return false;
+    }
+    if (!form.declarationAccepted) {
+      toast.error("Confirme a declaracao de veracidade dos dados para continuar.");
+      return false;
+    }
+
+    if (form.commercial_contact.phone.trim() && !isValidLeadPhone(form.commercial_contact.phone)) {
+      toast.error("O telefone do contato comercial esta invalido.");
+      return false;
+    }
+
+    if (form.message_contact_phone.trim() && !isValidLeadPhone(form.message_contact_phone)) {
+      toast.error("O telefone para atendimento e recados esta invalido.");
       return false;
     }
 
@@ -393,37 +420,37 @@ const PublicCwkForm = () => {
   const goToNextStep = () => {
     if (step === 1 && !validateStepOne()) return;
     if (step === 2 && !validateStepTwo()) return;
-    if (step === 3 && !validateStepThree()) return;
-    setStep((current) => Math.min(current + 1, 4) as 1 | 2 | 3 | 4);
+    setStep((current) => Math.min(current + 1, 3) as 1 | 2 | 3);
   };
 
   const goToPreviousStep = () => {
-    setStep((current) => Math.max(current - 1, 1) as 1 | 2 | 3 | 4);
+    setStep((current) => Math.max(current - 1, 1) as 1 | 2 | 3);
   };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!validateStepOne() || !validateStepTwo() || !validateStepThree() || !validateStepFour()) {
+    if (!validateStepOne() || !validateStepTwo() || !validateStepThree()) {
       return;
     }
 
     if (!selectedUnit || !selectedPlan) {
-      toast.error("Selecione unidade e plano antes de enviar.");
+      toast.error("Selecione a unidade e o plano para continuar.");
       return;
     }
 
     setLoading(true);
 
-    const primaryCommercialPhone = splitFirstValue(form.commercial_contact.phones);
-    const primaryCommercialEmail = splitFirstValue(form.commercial_contact.emails);
+    const primaryContactName = form.representative_one.name.trim();
+    const primaryContactEmail = form.company_email.trim();
+    const primaryContactPhone = formatPhone(form.company_phone);
 
     const diagnosisBlocks = [
       [
         "Ficha cadastral CWK",
-        `Unidade escolhida: ${selectedUnit.label}`,
+        `Unidade escolhida: ${selectedUnit.value}`,
         `Plano escolhido: ${selectedPlan.label}`,
-        `Interesse em abertura de empresa ou alteracao contratual do endereco: ${form.contract_change_interest}`,
+        `Interesse em abertura de empresa ou alteracao contratual: ${form.contract_change_interest}`,
       ].join("\n"),
       [
         "Dados da empresa",
@@ -431,53 +458,64 @@ const PublicCwkForm = () => {
         `Nome fantasia: ${form.trade_name}`,
         `CNPJ: ${form.cnpj}`,
         `Atividade principal: ${form.main_activity}`,
-        `Endereco: ${form.address}`,
-        `Bairro: ${form.neighborhood}`,
-        `Cidade/UF: ${form.city}/${form.uf}`,
-        `CEP: ${form.cep}`,
-        `Celular da empresa: ${form.company_phone}`,
         `E-mail da empresa: ${form.company_email}`,
-        `Inscricao estadual: ${form.state_registration || "-"}`,
-        `Inscricao municipal: ${form.municipal_registration || "-"}`,
-        `Retem ISSQN: ${form.retains_issqn}`,
+        `Telefone principal: ${form.company_phone}`,
+        addressRequired
+          ? `Endereco: ${form.address || "-"}`
+          : "Endereco: a confirmar em etapa posterior",
+        addressRequired
+          ? `Bairro: ${form.neighborhood || "-"}`
+          : "Bairro: a confirmar em etapa posterior",
+        addressRequired
+          ? `Cidade/UF: ${[form.city, form.uf].filter(Boolean).join("/") || "-"}`
+          : "Cidade/UF: a confirmar em etapa posterior",
+        addressRequired
+          ? `CEP: ${form.cep || "-"}`
+          : "CEP: a confirmar em etapa posterior",
       ].join("\n"),
-      formatRepresentativeBlock("Representante legal 1", form.representative_one),
-      formatRepresentativeBlock("Representante legal 2", form.representative_two),
+      formatRepresentativeBlock("Representante legal principal", form.representative_one),
+      formatRepresentativeBlock("Segundo representante legal", form.representative_two),
+      formatContactBlock("Contato financeiro", form.financial_contact),
+      formatContactBlock("Contato comercial", form.commercial_contact),
       form.message_contact_name || form.message_contact_email || form.message_contact_phone
         ? [
-            "Atendimento / envio de recados",
-            `Nome para atendimento: ${form.message_contact_name || "-"}`,
+            "Atendimento e recados",
+            `Nome: ${form.message_contact_name || "-"}`,
             `E-mail: ${form.message_contact_email || "-"}`,
-            `Celular: ${form.message_contact_phone || "-"}`,
+            `Telefone: ${form.message_contact_phone || "-"}`,
           ].join("\n")
         : null,
-      formatSimpleContactBlock("Contato financeiro", form.financial_contact),
-      formatSimpleContactBlock("Contato comercial", form.commercial_contact),
       form.notes.trim() ? ["Observacoes adicionais", form.notes.trim()].join("\n") : null,
     ].filter(Boolean);
 
     const additionalContacts = [
       {
-        id: "cwk-representative-1",
-        name: form.representative_one.name ? `Representante legal 1 - ${form.representative_one.name}` : "",
+        id: "cwk-legal-main",
+        name: primaryContactName ? `Representante legal - ${primaryContactName}` : "",
         phone: form.representative_one.phone,
         email: form.representative_one.email,
       },
       {
-        id: "cwk-representative-2",
-        name: form.representative_two.name ? `Representante legal 2 - ${form.representative_two.name}` : "",
+        id: "cwk-legal-secondary",
+        name: form.representative_two.name ? `Segundo representante - ${form.representative_two.name}` : "",
         phone: form.representative_two.phone,
         email: form.representative_two.email,
       },
       {
         id: "cwk-financial-contact",
         name: form.financial_contact.name ? `Contato financeiro - ${form.financial_contact.name}` : "",
-        phone: splitFirstValue(form.financial_contact.phones),
-        email: splitFirstValue(form.financial_contact.emails),
+        phone: form.financial_contact.phone,
+        email: form.financial_contact.email,
+      },
+      {
+        id: "cwk-commercial-contact",
+        name: form.commercial_contact.name ? `Contato comercial - ${form.commercial_contact.name}` : "",
+        phone: form.commercial_contact.phone,
+        email: form.commercial_contact.email,
       },
       {
         id: "cwk-message-contact",
-        name: form.message_contact_name ? `Atendimento / recados - ${form.message_contact_name}` : "",
+        name: form.message_contact_name ? `Atendimento e recados - ${form.message_contact_name}` : "",
         phone: form.message_contact_phone,
         email: form.message_contact_email,
       },
@@ -488,20 +526,20 @@ const PublicCwkForm = () => {
         target_funnel_name: selectedUnit.value,
         company_maturity: "existing_company",
         company_or_person: form.company_or_person.trim(),
-        contact_name: form.commercial_contact.name.trim(),
+        contact_name: primaryContactName,
         service_types: [selectedPlan.serviceType],
         service_details: [
           `Plano escolhido: ${selectedPlan.label}`,
-          `Unidade escolhida: ${selectedUnit.label}`,
+          `Unidade escolhida: ${selectedUnit.value}`,
           `Nome fantasia: ${form.trade_name.trim()}`,
         ].join("\n"),
-        phone: formatPhone(primaryCommercialPhone),
-        email: primaryCommercialEmail.trim(),
+        phone: primaryContactPhone,
+        email: primaryContactEmail,
         cnpj: formatCnpj(form.cnpj),
         city: form.city.trim(),
         uf: form.uf,
         segment: "Coworking",
-        segment_other: `${selectedUnit.label} | ${selectedPlan.label}`,
+        segment_other: `${selectedUnit.value} | ${selectedPlan.label}`,
         source: "Ficha cadastral CWK",
         accounting_pain_points: diagnosisBlocks.join("\n\n"),
         additional_contacts: additionalContacts,
@@ -541,49 +579,64 @@ const PublicCwkForm = () => {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(135deg,#4f2878_0%,#5f338c_58%,#ff7f2a_130%)] px-4 py-10">
+    <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(135deg,#4f2878_0%,#5e3187_52%,#ff7f2a_125%)] px-4 py-10">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.18),_transparent_52%)]" />
       <div className="pointer-events-none absolute -left-20 top-12 h-72 w-72 rounded-full bg-[#ff8b3d]/25 blur-3xl" />
       <div className="pointer-events-none absolute -right-16 bottom-12 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
 
-      <div className="relative mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+      <div className="relative mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-start">
         <section className="pt-4 text-white">
-          <div className="inline-flex items-end gap-1 rounded-[28px] bg-white/8 px-5 py-3 shadow-xl backdrop-blur">
-            <span className="text-4xl font-black tracking-tight text-[#ff7f2a]">C</span>
-            <span className="text-4xl font-black tracking-tight text-white">WK</span>
-            <span className="mb-1 ml-2 text-xs font-medium uppercase tracking-[0.42em] text-white/75">coworking</span>
+          <div className="inline-flex rounded-[32px] bg-white/12 px-7 py-5 shadow-[0_18px_60px_rgba(22,12,40,0.28)] backdrop-blur">
+            <img
+              src={cwkLogo}
+              alt="CWK Coworking"
+              className="h-28 w-auto object-contain opacity-100 drop-shadow-[0_8px_24px_rgba(255,255,255,0.14)] sm:h-32"
+              style={{ filter: "brightness(0) invert(1)" }}
+            />
           </div>
 
-          <p className="mt-8 text-sm font-semibold uppercase tracking-[0.32em] text-white/70">Ficha cadastral publica</p>
-          <h1 className="mt-4 max-w-3xl text-4xl font-black tracking-tight sm:text-5xl">
-            Cadastro comercial da sua empresa na rede CWK
+          <p className="mt-8 text-sm font-semibold uppercase tracking-[0.32em] text-white/70">Ficha cadastral</p>
+          <h1 className="mt-4 max-w-4xl text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
+            A forma corporativa de fazer coworking
           </h1>
-          <p className="mt-5 max-w-3xl text-base leading-7 text-white/80 sm:text-lg">
-            Preencha a ficha com os dados da empresa, representantes e contatos principais. A unidade escolhida define
-            automaticamente o funil em que esse lead sera criado no CRM da CWK.
+          <p className="mt-5 max-w-3xl text-base leading-7 text-white/82 sm:text-lg">
+            Informe os dados da sua empresa e escolha os servicos CWK que fazem sentido para o seu negocio.
+            Nos cuidamos do proximo passo.
           </p>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            {[
-              "Unidade escolhida vira o funil correto no CRM",
-              "Plano e contatos ficam registrados com clareza",
-              "Informacoes detalhadas seguem para um diagnostico CWK no lead",
-            ].map((item) => (
-              <div key={item} className="rounded-2xl border border-white/15 bg-white/10 px-4 py-4 text-sm leading-6 text-white/85 backdrop-blur">
-                {item}
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            {offeringHighlights.map((highlight) => (
+              <div
+                key={highlight.title}
+                className="rounded-[26px] border border-white/14 bg-white/10 p-5 text-white shadow-[0_14px_40px_rgba(26,14,45,0.18)] backdrop-blur"
+              >
+                <h3 className="text-lg font-bold leading-tight sm:text-xl">{highlight.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-white/78">{highlight.description}</p>
+                <div className="mt-4 space-y-2">
+                  {highlight.items.map((item) => (
+                    <div key={item} className="flex items-start gap-2.5 text-sm text-white/92">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#7ef0cc]" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         </section>
 
         <Card className="border-0 bg-white shadow-[0_24px_80px_rgba(28,18,45,0.32)]">
-          <CardHeader className="space-y-2 border-b border-slate-100">
-            <CardTitle className="text-2xl text-slate-900">Preencher ficha cadastral</CardTitle>
+          <CardHeader className="space-y-3 border-b border-slate-100 bg-[linear-gradient(180deg,#fff_0%,#faf7fd_100%)]">
+            <div className="inline-flex w-fit rounded-full bg-[#f4ebff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#4f2878]">
+              Cadastro empresarial
+            </div>
+            <CardTitle className="text-3xl font-black tracking-tight text-slate-900">
+              Preencha sua ficha cadastral
+            </CardTitle>
             <CardDescription>
-              {step === 1 && "Etapa 1 de 4: unidade, plano e dados principais da empresa."}
-              {step === 2 && "Etapa 2 de 4: endereco e dados cadastrais da empresa."}
-              {step === 3 && "Etapa 3 de 4: representantes legais da empresa."}
-              {step === 4 && "Etapa 4 de 4: contatos financeiro, comercial e recados."}
+              {step === 1 && "Comece com os dados principais da empresa, a unidade desejada e o plano ideal."}
+              {step === 2 && "Agora informe o representante legal e, se necessario, os dados complementares da empresa."}
+              {step === 3 && "Finalize com os contatos importantes e confirme o envio das informacoes."}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -592,7 +645,7 @@ const PublicCwkForm = () => {
                 <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" />
                 <h2 className="mt-4 text-lg font-semibold text-slate-900">Ficha enviada com sucesso</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  O lead foi criado e sera enviado para a unidade selecionada no funil da CWK.
+                  Recebemos seus dados e nossa equipe dara continuidade ao atendimento.
                 </p>
                 <Button
                   type="button"
@@ -611,13 +664,7 @@ const PublicCwkForm = () => {
                 <div className="space-y-3 rounded-2xl border border-[#4f2878]/10 bg-[#f7f4fb] p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">Etapa {step} de 4</p>
-                      <p className="text-sm text-slate-600">
-                        {step === 1 && "Unidade, plano e dados principais"}
-                        {step === 2 && "Endereco e cadastro fiscal"}
-                        {step === 3 && "Representantes legais"}
-                        {step === 4 && "Contatos e observacoes"}
-                      </p>
+                      <p className="text-sm font-semibold text-slate-900">Etapa {step} de 3</p>
                     </div>
                     <span className="text-sm font-semibold text-[#4f2878]">{progressPercentage}%</span>
                   </div>
@@ -632,7 +679,7 @@ const PublicCwkForm = () => {
                 {step === 1 && (
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <FieldLabel required>Qual unidade da CWK deve receber este lead?</FieldLabel>
+                      <FieldLabel required>Unidade CWK escolhida</FieldLabel>
                       <RadioGroup
                         value={form.unit}
                         onValueChange={(value) => patchForm({ unit: value })}
@@ -651,7 +698,6 @@ const PublicCwkForm = () => {
                               <RadioGroupItem value={unit.value} className="mt-1" />
                               <div>
                                 <p className="text-sm font-semibold text-slate-900">{unit.label}</p>
-                                <p className="text-xs text-slate-500">Lead entra direto neste funil.</p>
                               </div>
                             </label>
                           );
@@ -723,87 +769,8 @@ const PublicCwkForm = () => {
                         required
                       />
                     </div>
-                  </div>
-                )}
-
-                {step === 2 && (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <FieldLabel htmlFor="cwk-address" required>Endereco da empresa</FieldLabel>
-                      <Input
-                        id="cwk-address"
-                        value={form.address}
-                        onChange={(event) => patchForm({ address: event.target.value })}
-                        placeholder="Rua, numero e complemento"
-                        required
-                      />
-                    </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <FieldLabel htmlFor="cwk-neighborhood" required>Bairro</FieldLabel>
-                        <Input
-                          id="cwk-neighborhood"
-                          value={form.neighborhood}
-                          onChange={(event) => patchForm({ neighborhood: event.target.value })}
-                          placeholder="Digite o bairro"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <FieldLabel htmlFor="cwk-cep" required>CEP</FieldLabel>
-                        <Input
-                          id="cwk-cep"
-                          value={form.cep}
-                          onChange={(event) => patchForm({ cep: formatCep(event.target.value) })}
-                          placeholder="00000-000"
-                          inputMode="numeric"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
-                      <div className="space-y-2">
-                        <FieldLabel htmlFor="cwk-city" required>Cidade</FieldLabel>
-                        <Input
-                          id="cwk-city"
-                          value={form.city}
-                          onChange={(event) => patchForm({ city: event.target.value })}
-                          placeholder="Digite a cidade"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <FieldLabel required>UF</FieldLabel>
-                        <Select value={form.uf || undefined} onValueChange={(value) => patchForm({ uf: value })}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="UF" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {UF_OPTIONS.map((uf) => (
-                              <SelectItem key={uf} value={uf}>{uf}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <FieldLabel htmlFor="cwk-company-phone" required>Celular da empresa</FieldLabel>
-                        <Input
-                          id="cwk-company-phone"
-                          value={form.company_phone}
-                          onChange={(event) => patchForm({ company_phone: formatPhone(event.target.value) })}
-                          placeholder="(31) 99999-9999"
-                          inputMode="tel"
-                          required
-                        />
-                      </div>
-
                       <div className="space-y-2">
                         <FieldLabel htmlFor="cwk-company-email" required>E-mail da empresa</FieldLabel>
                         <Input
@@ -815,108 +782,159 @@ const PublicCwkForm = () => {
                           required
                         />
                       </div>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <FieldLabel htmlFor="cwk-state-registration" optional>Inscricao estadual</FieldLabel>
-                        <Input
-                          id="cwk-state-registration"
-                          value={form.state_registration}
-                          onChange={(event) => patchForm({ state_registration: event.target.value })}
-                          placeholder="Se houver"
-                        />
-                      </div>
 
                       <div className="space-y-2">
-                        <FieldLabel htmlFor="cwk-municipal-registration" optional>Inscricao municipal</FieldLabel>
+                        <FieldLabel htmlFor="cwk-company-phone" required>Celular ou telefone principal</FieldLabel>
                         <Input
-                          id="cwk-municipal-registration"
-                          value={form.municipal_registration}
-                          onChange={(event) => patchForm({ municipal_registration: event.target.value })}
-                          placeholder="Se houver"
+                          id="cwk-company-phone"
+                          value={form.company_phone}
+                          onChange={(event) => patchForm({ company_phone: formatPhone(event.target.value) })}
+                          placeholder="(31) 99999-9999"
+                          inputMode="tel"
+                          required
                         />
                       </div>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <FieldLabel required>Retem ISSQN?</FieldLabel>
-                        <RadioGroup
-                          value={form.retains_issqn}
-                          onValueChange={(value) => patchForm({ retains_issqn: value })}
-                          className="grid gap-3 sm:grid-cols-2"
-                        >
-                          {yesNoOptions.map((option) => (
-                            <label key={option.value} className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3">
-                              <RadioGroupItem value={option.value} />
-                              <span className="text-sm font-medium text-slate-800">{option.label}</span>
-                            </label>
-                          ))}
-                        </RadioGroup>
-                      </div>
-
-                      <div className="space-y-2">
-                        <FieldLabel required>Interesse em abertura/alteracao contratual do endereco?</FieldLabel>
-                        <RadioGroup
-                          value={form.contract_change_interest}
-                          onValueChange={(value) => patchForm({ contract_change_interest: value })}
-                          className="grid gap-3 sm:grid-cols-2"
-                        >
-                          {yesNoOptions.map((option) => (
-                            <label key={option.value} className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3">
-                              <RadioGroupItem value={option.value} />
-                              <span className="text-sm font-medium text-slate-800">{option.label}</span>
-                            </label>
-                          ))}
-                        </RadioGroup>
-                      </div>
+                    <div className="space-y-2">
+                      <FieldLabel required>Interesse em abertura de empresa ou alteracao contratual?</FieldLabel>
+                      <RadioGroup
+                        value={form.contract_change_interest}
+                        onValueChange={(value) => patchForm({ contract_change_interest: value })}
+                        className="grid gap-3 sm:grid-cols-2"
+                      >
+                        {yesNoOptions.map((option) => (
+                          <label key={option.value} className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3">
+                            <RadioGroupItem value={option.value} />
+                            <span className="text-sm font-medium text-slate-800">{option.label}</span>
+                          </label>
+                        ))}
+                      </RadioGroup>
                     </div>
                   </div>
                 )}
 
-                {step === 3 && (
+                {step === 2 && (
                   <div className="space-y-5">
                     <RepresentativeSection
-                      title="Representante legal 1"
-                      description="Principal representante da empresa. Este bloco e obrigatorio."
+                      title="Representante legal principal"
                       representative={form.representative_one}
                       onPatch={(patch) => patchRepresentative("representative_one", patch)}
                       required
                     />
 
+                    <Card className="border-slate-200">
+                      <CardContent className="space-y-4 p-5">
+                        <div>
+                          <h3 className="text-sm font-semibold text-slate-900">Dados complementares da empresa</h3>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {addressRequired
+                              ? "Como este plano ou solicitacao exige endereco, estes campos sao obrigatorios."
+                              : "Preencha se ja quiser adiantar esses dados."}
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <FieldLabel htmlFor="cwk-address" required={addressRequired} optional={!addressRequired}>
+                            Endereco da empresa
+                          </FieldLabel>
+                          <Input
+                            id="cwk-address"
+                            value={form.address}
+                            onChange={(event) => patchForm({ address: event.target.value })}
+                            placeholder="Rua, numero e complemento"
+                          />
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <FieldLabel htmlFor="cwk-neighborhood" required={addressRequired} optional={!addressRequired}>
+                              Bairro
+                            </FieldLabel>
+                            <Input
+                              id="cwk-neighborhood"
+                              value={form.neighborhood}
+                              onChange={(event) => patchForm({ neighborhood: event.target.value })}
+                              placeholder="Digite o bairro"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <FieldLabel htmlFor="cwk-cep" required={addressRequired} optional={!addressRequired}>
+                              CEP
+                            </FieldLabel>
+                            <Input
+                              id="cwk-cep"
+                              value={form.cep}
+                              onChange={(event) => patchForm({ cep: formatCep(event.target.value) })}
+                              placeholder="00000-000"
+                              inputMode="numeric"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
+                          <div className="space-y-2">
+                            <FieldLabel htmlFor="cwk-city" required={addressRequired} optional={!addressRequired}>
+                              Cidade
+                            </FieldLabel>
+                            <Input
+                              id="cwk-city"
+                              value={form.city}
+                              onChange={(event) => patchForm({ city: event.target.value })}
+                              placeholder="Digite a cidade"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <FieldLabel required={addressRequired} optional={!addressRequired}>UF</FieldLabel>
+                            <Select value={form.uf || undefined} onValueChange={(value) => patchForm({ uf: value })}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="UF" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {UF_OPTIONS.map((uf) => (
+                                  <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
                     <RepresentativeSection
-                      title="Representante legal 2"
-                      description="Use se houver mais um socio ou representante legal."
+                      title="Segundo representante legal"
                       representative={form.representative_two}
                       onPatch={(patch) => patchRepresentative("representative_two", patch)}
                     />
                   </div>
                 )}
 
-                {step === 4 && (
+                {step === 3 && (
                   <div className="space-y-5">
                     <ContactSection
-                      title="Contato comercial"
-                      description="Este contato sera usado como principal no lead da CWK."
-                      contact={form.commercial_contact}
-                      onPatch={(patch) => patchContact("commercial_contact", patch)}
-                      required
+                      title="Contato financeiro"
+                      description="Importante para cobranca, boletos, notas e recorrencia."
+                      contact={form.financial_contact}
+                      onPatch={(patch) => patchContact("financial_contact", patch)}
+                      requiredName
+                      requiredEmail
                     />
 
                     <ContactSection
-                      title="Contato financeiro"
-                      description="Opcional, mas recomendado para o cadastro ficar completo."
-                      contact={form.financial_contact}
-                      onPatch={(patch) => patchContact("financial_contact", patch)}
+                      title="Contato comercial"
+                      description="Opcional. Se nao preencher, usaremos os dados principais da empresa e do representante."
+                      contact={form.commercial_contact}
+                      onPatch={(patch) => patchContact("commercial_contact", patch)}
                     />
 
                     <Card className="border-slate-200">
                       <CardContent className="space-y-4 p-5">
                         <div>
-                          <h3 className="text-sm font-semibold text-slate-900">Atendimento / envio de recados</h3>
+                          <h3 className="text-sm font-semibold text-slate-900">Atendimento e envio de recados</h3>
                           <p className="mt-1 text-xs text-slate-500">
-                            Preencha apenas se houver atendimento com telefonia personalizada.
+                            Preencha apenas se o plano exigir atendimento telefonico ou recepcao personalizada.
                           </p>
                         </div>
 
@@ -932,25 +950,25 @@ const PublicCwkForm = () => {
                           </div>
 
                           <div className="space-y-2">
-                            <FieldLabel htmlFor="cwk-message-contact-phone" optional>Numero de celular</FieldLabel>
+                            <FieldLabel htmlFor="cwk-message-contact-email" optional>E-mail para atendimento</FieldLabel>
                             <Input
-                              id="cwk-message-contact-phone"
-                              value={form.message_contact_phone}
-                              onChange={(event) => patchForm({ message_contact_phone: formatPhone(event.target.value) })}
-                              placeholder="(31) 99999-9999"
-                              inputMode="tel"
+                              id="cwk-message-contact-email"
+                              type="email"
+                              value={form.message_contact_email}
+                              onChange={(event) => patchForm({ message_contact_email: event.target.value })}
+                              placeholder="atendimento@empresa.com"
                             />
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <FieldLabel htmlFor="cwk-message-contact-email" optional>Endereco de e-mail</FieldLabel>
+                          <FieldLabel htmlFor="cwk-message-contact-phone" optional>Telefone para atendimento</FieldLabel>
                           <Input
-                            id="cwk-message-contact-email"
-                            type="email"
-                            value={form.message_contact_email}
-                            onChange={(event) => patchForm({ message_contact_email: event.target.value })}
-                            placeholder="atendimento@empresa.com"
+                            id="cwk-message-contact-phone"
+                            value={form.message_contact_phone}
+                            onChange={(event) => patchForm({ message_contact_phone: formatPhone(event.target.value) })}
+                            placeholder="(31) 99999-9999"
+                            inputMode="tel"
                           />
                         </div>
                       </CardContent>
@@ -963,9 +981,21 @@ const PublicCwkForm = () => {
                         rows={4}
                         value={form.notes}
                         onChange={(event) => patchForm({ notes: event.target.value })}
-                        placeholder="Se quiser, registre aqui alguma observacao complementar da ficha."
+                        placeholder="Se quiser, registre alguma observacao complementar."
                       />
                     </div>
+
+                    <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 px-4 py-4">
+                      <Checkbox
+                        checked={form.declarationAccepted}
+                        onCheckedChange={(checked) => patchForm({ declarationAccepted: Boolean(checked) })}
+                        className="mt-1"
+                      />
+                      <span className="text-sm leading-6 text-slate-700">
+                        Declaro que as informacoes preenchidas sao verdadeiras e autorizo o contato da CWK para
+                        continuidade do atendimento.
+                      </span>
+                    </label>
                   </div>
                 )}
 
@@ -975,12 +1005,20 @@ const PublicCwkForm = () => {
                       Voltar
                     </Button>
                   )}
-                  {step < 4 ? (
-                    <Button type="button" className="w-full bg-[#4f2878] font-semibold text-white hover:bg-[#442169] sm:flex-1" onClick={goToNextStep}>
+                  {step < 3 ? (
+                    <Button
+                      type="button"
+                      className="w-full bg-[#4f2878] font-semibold text-white hover:bg-[#442169] sm:flex-1"
+                      onClick={goToNextStep}
+                    >
                       Continuar
                     </Button>
                   ) : (
-                    <Button type="submit" className="w-full bg-[#ff7f2a] font-semibold text-white hover:bg-[#ef7422] sm:flex-1" disabled={loading}>
+                    <Button
+                      type="submit"
+                      className="w-full bg-[#ff7f2a] font-semibold text-white hover:bg-[#ef7422] sm:flex-1"
+                      disabled={loading}
+                    >
                       {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                       Enviar ficha cadastral
                     </Button>
@@ -1007,43 +1045,31 @@ const PublicCwkForm = () => {
 
 const RepresentativeSection = ({
   title,
-  description,
   representative,
   onPatch,
   required = false,
 }: {
   title: string;
-  description: string;
-  representative: LegalRepresentativeForm;
-  onPatch: (patch: Partial<LegalRepresentativeForm>) => void;
+  representative: RepresentativeForm;
+  onPatch: (patch: Partial<RepresentativeForm>) => void;
   required?: boolean;
 }) => (
   <Card className="border-slate-200">
     <CardContent className="space-y-4 p-5">
       <div>
         <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-        <p className="mt-1 text-xs text-slate-500">{description}</p>
+      </div>
+
+      <div className="space-y-2">
+        <FieldLabel required={required}>Nome completo</FieldLabel>
+        <Input
+          value={representative.name}
+          onChange={(event) => onPatch({ name: event.target.value })}
+          placeholder="Nome completo"
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2 sm:col-span-2">
-          <FieldLabel required={required}>Nome completo</FieldLabel>
-          <Input
-            value={representative.name}
-            onChange={(event) => onPatch({ name: event.target.value })}
-            placeholder="Nome completo"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <FieldLabel required={required}>RG</FieldLabel>
-          <Input
-            value={representative.rg}
-            onChange={(event) => onPatch({ rg: event.target.value })}
-            placeholder="Documento de identidade"
-          />
-        </div>
-
         <div className="space-y-2">
           <FieldLabel required={required}>CPF</FieldLabel>
           <Input
@@ -1051,72 +1077,6 @@ const RepresentativeSection = ({
             onChange={(event) => onPatch({ cpf: formatCpf(event.target.value) })}
             placeholder="000.000.000-00"
             inputMode="numeric"
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2 sm:col-span-2">
-          <FieldLabel optional>Endereco</FieldLabel>
-          <Input
-            value={representative.address}
-            onChange={(event) => onPatch({ address: event.target.value })}
-            placeholder="Rua, numero e complemento"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <FieldLabel optional>Bairro</FieldLabel>
-          <Input
-            value={representative.neighborhood}
-            onChange={(event) => onPatch({ neighborhood: event.target.value })}
-            placeholder="Bairro"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <FieldLabel optional>CEP</FieldLabel>
-          <Input
-            value={representative.cep}
-            onChange={(event) => onPatch({ cep: formatCep(event.target.value) })}
-            placeholder="00000-000"
-            inputMode="numeric"
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
-        <div className="space-y-2">
-          <FieldLabel optional>Cidade</FieldLabel>
-          <Input
-            value={representative.city}
-            onChange={(event) => onPatch({ city: event.target.value })}
-            placeholder="Cidade"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <FieldLabel optional>UF</FieldLabel>
-          <Select value={representative.uf || undefined} onValueChange={(value) => onPatch({ uf: value })}>
-            <SelectTrigger>
-              <SelectValue placeholder="UF" />
-            </SelectTrigger>
-            <SelectContent>
-              {UF_OPTIONS.map((uf) => (
-                <SelectItem key={uf} value={uf}>{uf}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="space-y-2">
-          <FieldLabel optional>Data de nascimento</FieldLabel>
-          <Input
-            type="date"
-            value={representative.birth_date}
-            onChange={(event) => onPatch({ birth_date: event.target.value })}
           />
         </div>
 
@@ -1129,16 +1089,16 @@ const RepresentativeSection = ({
             inputMode="tel"
           />
         </div>
+      </div>
 
-        <div className="space-y-2">
-          <FieldLabel required={required}>E-mail</FieldLabel>
-          <Input
-            type="email"
-            value={representative.email}
-            onChange={(event) => onPatch({ email: event.target.value })}
-            placeholder="nome@empresa.com"
-          />
-        </div>
+      <div className="space-y-2">
+        <FieldLabel required={required}>E-mail</FieldLabel>
+        <Input
+          type="email"
+          value={representative.email}
+          onChange={(event) => onPatch({ email: event.target.value })}
+          placeholder="nome@empresa.com"
+        />
       </div>
     </CardContent>
   </Card>
@@ -1149,13 +1109,15 @@ const ContactSection = ({
   description,
   contact,
   onPatch,
-  required = false,
+  requiredName = false,
+  requiredEmail = false,
 }: {
   title: string;
   description: string;
-  contact: SimpleContactForm;
-  onPatch: (patch: Partial<SimpleContactForm>) => void;
-  required?: boolean;
+  contact: ContactForm;
+  onPatch: (patch: Partial<ContactForm>) => void;
+  requiredName?: boolean;
+  requiredEmail?: boolean;
 }) => (
   <Card className="border-slate-200">
     <CardContent className="space-y-4 p-5">
@@ -1165,7 +1127,7 @@ const ContactSection = ({
       </div>
 
       <div className="space-y-2">
-        <FieldLabel required={required}>Nome completo</FieldLabel>
+        <FieldLabel required={requiredName}>Nome completo</FieldLabel>
         <Input
           value={contact.name}
           onChange={(event) => onPatch({ name: event.target.value })}
@@ -1175,20 +1137,22 @@ const ContactSection = ({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <FieldLabel required={required}>Telefones</FieldLabel>
+          <FieldLabel required={requiredEmail}>E-mail</FieldLabel>
           <Input
-            value={contact.phones}
-            onChange={(event) => onPatch({ phones: event.target.value })}
-            placeholder="Ex.: (31) 99999-9999 / (31) 3333-3333"
+            type="email"
+            value={contact.email}
+            onChange={(event) => onPatch({ email: event.target.value })}
+            placeholder="contato@empresa.com"
           />
         </div>
 
         <div className="space-y-2">
-          <FieldLabel required={required}>E-mails</FieldLabel>
+          <FieldLabel optional>Telefone</FieldLabel>
           <Input
-            value={contact.emails}
-            onChange={(event) => onPatch({ emails: event.target.value })}
-            placeholder="Ex.: nome@empresa.com; financeiro@empresa.com"
+            value={contact.phone}
+            onChange={(event) => onPatch({ phone: formatPhone(event.target.value) })}
+            placeholder="(31) 99999-9999"
+            inputMode="tel"
           />
         </div>
       </div>
