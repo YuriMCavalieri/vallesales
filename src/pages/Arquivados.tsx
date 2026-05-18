@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useActiveFunnel } from "@/hooks/useActiveFunnel";
 import { useLeads, useProfiles, useReopenLead, useRestoreLead, useStages } from "@/hooks/useLeads";
 import { usePermissions } from "@/hooks/useUserRoles";
+import { exportArchivedAsExcel } from "@/lib/lead-export";
 import { formatCurrency, formatDateTime } from "@/lib/constants";
 import { parseDateValue } from "@/lib/date";
 import { buildLeadSearchText } from "@/lib/lead-search";
@@ -30,8 +31,11 @@ import {
   RotateCcw,
   Search,
   X,
+  Download,
+  FileSpreadsheet,
 } from "lucide-react";
 import type { DateRange } from "react-day-picker";
+import { toast } from "sonner";
 
 type ArchivedSituation = "lost" | "won";
 type ArchivedSituationFilter = "all" | ArchivedSituation;
@@ -283,6 +287,23 @@ const ArchivedLeads = () => {
     }
   };
 
+  const handleExportArchivedExcel = async () => {
+    try {
+      await exportArchivedAsExcel({
+        leads: filteredRows.map((row) => row.lead),
+        stages: stages.data ?? [],
+        profiles: profiles.data ?? [],
+        funnelName: selectedFunnels.length === 1 ? selectedFunnels[0]?.name ?? "Arquivados" : funnelFilterLabel,
+        funnelNameById: new Map(funnels.map((funnel) => [funnel.id, funnel.name])),
+        fileBaseName: `${selectedFunnels.length === 1 ? selectedFunnels[0]?.name ?? "arquivados" : "arquivados-multiplos-funis"}-arquivados`,
+        workbookTitle: "Arquivados",
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível exportar os arquivados em Excel.");
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <AppHeader active="arquivados" />
@@ -341,6 +362,18 @@ const ArchivedLeads = () => {
                   Busque por empresa, contato, responsável, funil ou motivo da perda.
                 </p>
               </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 w-full border-[#d8d4df] bg-white font-semibold shadow-sm sm:w-auto"
+                onClick={() => void handleExportArchivedExcel()}
+                disabled={filteredRows.length === 0}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" />
+                Exportar Excel
+              </Button>
 
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

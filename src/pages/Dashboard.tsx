@@ -1,14 +1,24 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useStages, useLeads } from "@/hooks/useLeads";
 import { useActiveFunnel } from "@/hooks/useActiveFunnel";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatCurrency } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { exportDashboardAsPdf } from "@/lib/lead-export";
+import { toast } from "sonner";
 import {
-  Loader2, Users, DollarSign, Trophy, XCircle, AlertTriangle, UserX, Target, Zap, Flame,
+  Loader2, Users, DollarSign, Trophy, XCircle, AlertTriangle, UserX, Target, Zap, Flame, Download, FileText, ChevronDown,
 } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -31,6 +41,7 @@ const Dashboard = () => {
   const activeFunnelReady = !funnelLoading && !!activeFunnelId && !!activeFunnel;
   const stages = useStages(activeFunnelId, activeFunnelReady);
   const leads = useLeads(activeFunnelId, activeFunnelReady);
+  const dashboardExportRef = useRef<HTMLDivElement | null>(null);
 
   const today = useMemo(() => {
     const d = new Date();
@@ -111,11 +122,32 @@ const Dashboard = () => {
 
   const loading = funnelLoading || stages.isLoading || leads.isLoading;
 
+  const handleExportDashboardPdf = async () => {
+    if (!dashboardExportRef.current) {
+      toast.error("Não foi possível localizar a área do dashboard para exportação.");
+      return;
+    }
+
+    try {
+      await exportDashboardAsPdf({
+        element: dashboardExportRef.current,
+        funnelName: activeFunnel?.name ?? null,
+        title: `Dashboard do funil ${activeFunnel?.name ?? ""}`.trim(),
+        subtitle: `Visão atual do dashboard exportada em ${new Date().toLocaleString("pt-BR")}`,
+        fileBaseName: `${activeFunnel?.name ?? "dashboard"}-dashboard`,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível exportar o dashboard em PDF.");
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <AppHeader active="dashboard" />
 
       {/* Title */}
+      <div ref={dashboardExportRef}>
       <div className="px-4 md:px-6 py-5 border-b border-border bg-card">
         <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
           Dashboard Comercial
@@ -128,6 +160,40 @@ const Dashboard = () => {
             Negócio ativo: {activeFunnel.name}
           </p>
         )}
+        <div className="mt-4 flex justify-start md:justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-[#d8d4df] bg-white font-semibold shadow-sm md:w-auto"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Exportar
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2">
+              <DropdownMenuLabel className="px-2 pb-2 pt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                Dashboard
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="rounded-xl px-3 py-2.5"
+                onSelect={(event) => {
+                  event.preventDefault();
+                  void handleExportDashboardPdf();
+                }}
+              >
+                <FileText className="mr-2 h-4 w-4 text-primary" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Dashboard em PDF</span>
+                  <span className="text-xs text-muted-foreground">Com identidade Valle ou CWK conforme o funil</span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {loading ? (
@@ -381,6 +447,7 @@ const Dashboard = () => {
           </section>
         </main>
       )}
+      </div>
     </div>
   );
 };

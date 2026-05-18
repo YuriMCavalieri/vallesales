@@ -42,6 +42,7 @@ interface Props {
   canCreateStages: boolean;
   canDeleteStages: boolean;
   funnelId: string;
+  funnelName?: string | null;
 }
 
 const stageColorBar: Record<string, string> = {
@@ -67,6 +68,7 @@ export const KanbanBoard = ({
   canCreateStages,
   canDeleteStages,
   funnelId,
+  funnelName = null,
 }: Props) => {
   const update = useUpdateLead();
   const archiveLead = useArchiveLead();
@@ -529,6 +531,8 @@ export const KanbanBoard = ({
                             lead={lead}
                             isLost={stage.is_lost}
                             profiles={profiles}
+                            funnelName={funnelName}
+                            stageName={stage.name}
                             isHighlighted={highlightedLeadId === lead.id}
                             onClick={() => onSelectLead(lead)}
                             draggable={canMoveLead(lead)}

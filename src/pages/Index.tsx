@@ -58,6 +58,8 @@ import {
   Check,
   Lock,
   Pencil,
+  Download,
+  FileSpreadsheet,
   Trash2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,9 +68,11 @@ import { formatCurrency } from "@/lib/constants";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { startOfLocalDay } from "@/lib/date";
+import { exportDashboardAsPdf, exportFunnelAsExcel } from "@/lib/lead-export";
 import { buildLeadSearchText } from "@/lib/lead-search";
 import { needsActionToday } from "@/lib/priority";
 import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 
 type StatusFilter = "todos" | "atrasados" | "sem_contato" | "follow_hoje" | "acao_hoje";
 
@@ -111,6 +115,7 @@ const Index = () => {
   const [editingFunnelId, setEditingFunnelId] = useState<string | null>(null);
   const [funnelPendingDeletion, setFunnelPendingDeletion] = useState<Funnel | null>(null);
   const funnelClickTimerRef = useRef<number | null>(null);
+  const dashboardExportRef = useRef<HTMLDivElement | null>(null);
 
   const today = useMemo(() => {
     const d = new Date();
@@ -275,6 +280,42 @@ const Index = () => {
     setOwnerFilter("all");
     setStatusFilter("todos");
     setOnlyMine(false);
+  };
+
+  const handleExportFunnelExcel = async () => {
+    try {
+      await exportFunnelAsExcel({
+        leads: leads.data ?? [],
+        stages: stages.data ?? [],
+        profiles: profiles.data ?? [],
+        funnelName: activeFunnel?.name ?? "Funil",
+        fileBaseName: `${activeFunnel?.name ?? "funil"}-leads`,
+        workbookTitle: "Funil",
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível exportar o funil em Excel.");
+    }
+  };
+
+  const handleExportDashboardPdf = async () => {
+    if (!dashboardExportRef.current) {
+      toast.error("Não foi possível localizar a área do dashboard para exportação.");
+      return;
+    }
+
+    try {
+      await exportDashboardAsPdf({
+        element: dashboardExportRef.current,
+        funnelName: activeFunnel?.name ?? null,
+        title: `Dashboard do funil ${activeFunnel?.name ?? ""}`.trim(),
+        subtitle: `Visão atual do dashboard exportada em ${new Date().toLocaleString("pt-BR")}`,
+        fileBaseName: `${activeFunnel?.name ?? "dashboard"}-dashboard`,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível exportar o dashboard em PDF.");
+    }
   };
 
   const handleCreateFunnel = async () => {
@@ -556,20 +597,54 @@ const Index = () => {
             </p>
           </div>
 
-          {perms.canCreateLead && (
-            <div className="flex shrink-0 md:pt-7">
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="w-full border-[#d8d4df] bg-white font-semibold shadow-card sm:w-auto"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2">
+                <DropdownMenuLabel className="px-2 pb-2 pt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Funil atual
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="rounded-xl px-3 py-2.5"
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    void handleExportFunnelExcel();
+                  }}
+                >
+                  <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">Funil em Excel</span>
+                    <span className="text-xs text-muted-foreground">Todas as colunas do funil em formato de planilha</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {perms.canCreateLead && (
               <Button
                 onClick={() => openNew()}
                 variant="accent"
                 size="lg"
-                className="w-full font-semibold shadow-card md:w-auto"
+                className="w-full font-semibold shadow-card sm:w-auto"
                 title="Novo lead (atalho: N)"
               >
                 <Plus className="mr-1 h-4 w-4" /> Novo lead
                 <kbd className="ml-2 hidden rounded bg-black/15 px-1.5 py-0.5 font-mono text-[10px] md:inline-flex">N</kbd>
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="mb-4">
@@ -776,6 +851,7 @@ const Index = () => {
             ) : (
               <KanbanBoard
                 funnelId={activeFunnelId}
+                funnelName={activeFunnel?.name ?? null}
                 stages={stages.data ?? []}
                 leads={filteredLeads}
                 profiles={profiles.data ?? []}

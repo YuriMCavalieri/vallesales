@@ -6,6 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   useAddNote,
   useAssignableProfiles,
   useDeleteLead,
@@ -26,6 +34,7 @@ import {
   DollarSign,
   Download,
   FileText,
+  FileSpreadsheet,
   FileUp,
   History,
   Loader2,
@@ -43,7 +52,9 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
 import { parseDateValue } from "@/lib/date";
+import { exportLeadAsExcel, exportLeadAsPdf } from "@/lib/lead-export";
 import { COMPANY_MATURITY_LABELS, parseAdditionalContacts, parseLeadSource } from "@/lib/lead-form";
+import { toast } from "sonner";
 
 interface Props {
   lead: Lead | null;
@@ -149,6 +160,7 @@ export const LeadDetailsSheet = ({
   const [contactDesc, setContactDesc] = useState("");
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>("__none__");
   const [attachmentPeriodFilter, setAttachmentPeriodFilter] = useState<AttachmentPeriodFilter>("all");
+  const [exportingFormat, setExportingFormat] = useState<"pdf" | "excel" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const activities = useLeadActivities(lead?.id ?? null);
@@ -197,6 +209,8 @@ export const LeadDetailsSheet = ({
   const sourceState = parseLeadSource(lead.source);
   const isOpeningCompanyLead = lead.company_maturity === "opening_company";
   const isCwkLead = sourceState.source.toLowerCase().includes("cwk");
+  const owner = profiles.find((profile) => profile.id === lead.owner_id);
+  const ownerName = owner?.full_name || owner?.email || null;
   const assignableIds = new Set(assignableProfiles.map((profile) => profile.id));
   const ownerOptions = profiles.filter(
     (profile) => assignableIds.has(profile.id) || profile.id === lead.owner_id,
@@ -241,6 +255,30 @@ export const LeadDetailsSheet = ({
     }
   };
 
+  const handleExport = async (format: "pdf" | "excel") => {
+    setExportingFormat(format);
+
+    try {
+      const exportContext = {
+        lead,
+        funnelName: funnel?.name ?? null,
+        stageName: stage?.name ?? null,
+        ownerName,
+      };
+
+      if (format === "pdf") {
+        await exportLeadAsPdf(exportContext);
+      } else {
+        await exportLeadAsExcel(exportContext);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(`Não foi possível exportar o lead em ${format === "pdf" ? "PDF" : "Excel"}.`);
+    } finally {
+      setExportingFormat(null);
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -263,6 +301,56 @@ export const LeadDetailsSheet = ({
               </div>
               <div className="flex shrink-0 items-start gap-4">
                 <div className="flex flex-wrap items-center justify-end gap-1">
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-header-foreground hover:bg-header-hover/10"
+                        disabled={!!exportingFormat}
+                      >
+                        {exportingFormat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-60 rounded-2xl p-2">
+                      <DropdownMenuLabel className="px-2 pb-2 pt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        Exportação
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="rounded-xl px-3 py-2.5"
+                        disabled={!!exportingFormat}
+                        onSelect={(event) => {
+                          event.preventDefault();
+                          void handleExport("pdf");
+                        }}
+                      >
+                        <FileText className="mr-2 h-4 w-4 text-primary" />
+                        <div className="flex min-w-0 flex-col">
+                          <span className="font-medium">Salvar como PDF</span>
+                          <span className="text-xs text-muted-foreground">
+                            Layout temático {isCwkLead || funnel?.name?.toLowerCase().includes("cwk") ? "CWK" : "Valle"}
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="rounded-xl px-3 py-2.5"
+                        disabled={!!exportingFormat}
+                        onSelect={(event) => {
+                          event.preventDefault();
+                          void handleExport("excel");
+                        }}
+                      >
+                        <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" />
+                        <div className="flex min-w-0 flex-col">
+                          <span className="font-medium">Salvar como Excel</span>
+                          <span className="text-xs text-muted-foreground">
+                            Ficha completa do lead para outro ambiente
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   {isArchived && restoreLead && canEditLead && (
                     <Button
                       size="sm"
