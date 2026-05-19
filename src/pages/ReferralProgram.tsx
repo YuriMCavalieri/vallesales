@@ -483,15 +483,12 @@ const ReferralProgram = () => {
                   Valle Indicação
                 </h1>
                 <p className="max-w-xl text-lg font-medium text-white/88 sm:text-xl">
-                  Indique com facilidade. Acompanhe com transparência.
+                  Indique, acompanhe e ganhe se fechar
                 </p>
                 <p className="max-w-xl text-sm leading-7 text-white/78 sm:text-base">
-                  Conhece uma empresa ou profissional que pode se beneficiar das soluções da Valle?
-                  Com o Valle Indicação, você envia o contato em poucos minutos, nossa equipe conduz
-                  todo o processo comercial e você acompanha cada etapa da oportunidade por aqui.
-                </p>
-                <p className="text-sm font-semibold text-white/88 sm:text-base">
-                  Indicar é simples, rápido e transparente.
+                  Conhece alguém que pode se beneficiar das soluções da Valle? Envie a indicação
+                  em poucos minutos, acompanhe cada etapa por aqui e, se o cliente fechar
+                  contrato, você poderá receber um prêmio especial.
                 </p>
               </div>
 
@@ -556,8 +553,7 @@ const ReferralProgram = () => {
             <CardHeader className="pb-4">
               <CardTitle className="text-2xl text-white">Como funciona o Valle Indicação</CardTitle>
               <CardDescription className="text-white/68">
-                Um fluxo simples para você indicar, acompanhar e ver o resultado da sua
-                oportunidade.
+                Um fluxo simples para você indicar, acompanhar e ver o resultado da sua oportunidade.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -969,8 +965,11 @@ const ReferralProgram = () => {
         </div>
       </section>
 
-      <section className="px-4 py-10 md:px-6">
-        <div className="mx-auto max-w-6xl space-y-6">
+      <section className="relative px-4 py-10 md:px-6">
+        <div className="pointer-events-none absolute inset-x-0 top-10 h-[78%] bg-[linear-gradient(180deg,rgba(193,157,126,0.16)_0%,rgba(233,220,206,0.08)_100%)]" />
+        <div className="pointer-events-none absolute inset-x-10 top-16 h-[70%] rounded-[2.5rem] border border-white/6 bg-white/[0.03] blur-[0.5px]" />
+
+        <div className="relative mx-auto max-w-6xl space-y-6">
           <Card className="border-0 bg-[#f8f5f1] text-slate-900 shadow-[0_20px_44px_-26px_rgba(0,0,0,0.35)]">
             <CardHeader>
               <CardTitle className="text-xl text-slate-900">Por que indicar para a Valle?</CardTitle>
@@ -989,12 +988,10 @@ const ReferralProgram = () => {
             <CardHeader>
               <CardTitle className="text-xl text-slate-900">Reconhecimento pela sua indicação</CardTitle>
               <CardDescription className="text-slate-600">
-                O Valle Indicação também foi criado para reconhecer quem ajuda a conectar a
-                Valle a novas oportunidades.
+                O Valle Indicação também foi criado para reconhecer quem ajuda a conectar a Valle a novas oportunidades.
               </CardDescription>
               <p className="text-sm leading-7 text-slate-600">
-                Cada indicação registrada pode gerar benefícios conforme a evolução da
-                oportunidade no processo comercial.
+                Cada indicação registrada pode gerar benefícios conforme a evolução da oportunidade no processo comercial.
               </p>
             </CardHeader>
             <CardContent className="grid gap-3 lg:grid-cols-3">
@@ -1011,7 +1008,6 @@ const ReferralProgram = () => {
               ))}
             </CardContent>
           </Card>
-
         </div>
       </section>
 
@@ -1022,12 +1018,10 @@ const ReferralProgram = () => {
               Valle Consultores
             </p>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/72">
-              O Valle Indicação foi pensado para tornar o processo de indicação mais simples,
-              organizado e transparente.
+              O Valle Indicação foi pensado para tornar o processo de indicação mais simples, organizado e transparente.
             </p>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/72">
-              Você indica, a Valle conduz e acompanha cada etapa, enquanto você visualiza os
-              avanços com facilidade.
+              Você indica, a Valle conduz e acompanha cada etapa, enquanto você visualiza os avanços com facilidade.
             </p>
           </div>
           <Button

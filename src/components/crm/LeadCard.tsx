@@ -249,7 +249,7 @@ export const LeadCard = ({
         <div className="space-y-1">
           {isReferralProgramLead && (
             <span className="inline-flex items-center rounded-full bg-accent px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-accent-foreground shadow-sm">
-              Valle Indicacao
+              Valle Indicação
             </span>
           )}
           <h4 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors group-hover:text-primary">

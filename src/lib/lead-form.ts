@@ -101,8 +101,8 @@ const REFERRAL_PROGRAM_SOURCE_LABEL = "Valle Indicacao";
 const LEGACY_REFERRAL_PROGRAM_SOURCE_LABEL = "Programa de Indicacao";
 
 export const formatLeadSourceLabel = (source: string) => {
-  if (source === "Indicacao") return "Indicacao";
-  if (source === LEGACY_REFERRAL_PROGRAM_SOURCE_LABEL || source === REFERRAL_PROGRAM_SOURCE_LABEL) return "Valle Indicacao";
+  if (source === "Indicacao") return "Indicação";
+  if (source === LEGACY_REFERRAL_PROGRAM_SOURCE_LABEL || source === REFERRAL_PROGRAM_SOURCE_LABEL) return "Valle Indicação";
   return source;
 };
 

@@ -433,7 +433,7 @@ export const LeadDetailsSheet = ({
               )}
               {isReferralProgramLead && (
                 <Badge variant="outline" className="border-accent/30 bg-accent/15 text-accent">
-                  Valle Indicacao
+                  Valle Indicação
                 </Badge>
               )}
             </div>
@@ -495,7 +495,7 @@ export const LeadDetailsSheet = ({
             {lead.cnpj && <Info label="CNPJ" value={lead.cnpj} />}
             {lead.employee_count && <Info label="Funcionarios" value={lead.employee_count} />}
             {sourceState.source && <Info label="Origem" value={formatLeadSourceLabel(sourceState.source)} />}
-            {sourceState.indication_by && <Info label="Indicacao por" value={sourceState.indication_by} />}
+            {sourceState.indication_by && <Info label="Indicação por" value={sourceState.indication_by} />}
             {lead.company_maturity && (
               <Info
                 label="Perfil empresarial"
@@ -512,9 +512,9 @@ export const LeadDetailsSheet = ({
           {isReferralProgramLead && (
             <Card className="space-y-3 border-accent/25 bg-accent/5 p-4">
               <div>
-                <h4 className="text-sm font-semibold text-foreground">Valle Indicacao</h4>
+                <h4 className="text-sm font-semibold text-foreground">Valle Indicação</h4>
                 <p className="text-xs text-muted-foreground">
-                  Este lead entrou pelo fluxo publico de indicacoes e precisa de abordagem comercial diferenciada.
+                  Este lead entrou pelo fluxo público de indicações e precisa de abordagem comercial diferenciada.
                 </p>
               </div>
               {sourceState.indication_by && (
