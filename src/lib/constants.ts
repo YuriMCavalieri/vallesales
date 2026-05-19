@@ -21,7 +21,7 @@ export const UF_OPTIONS = [
 ];
 
 export const SOURCE_OPTIONS = [
-  "Site", "Indicacao", "LinkedIn", "Instagram", "Google Ads",
+  "Site", "Indicacao", "Valle Indicacao", "LinkedIn", "Instagram", "Google Ads",
   "WhatsApp", "Evento", "E-mail marketing", "Outro",
 ];
 

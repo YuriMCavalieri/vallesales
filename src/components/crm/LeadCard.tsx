@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { exportLeadAsExcel, exportLeadAsPdf } from "@/lib/lead-export";
+import { parseLeadSource } from "@/lib/lead-form";
 import { toast } from "sonner";
 
 interface Props {
@@ -102,6 +103,8 @@ export const LeadCard = ({
   const actionToday = needsActionToday(lead);
   const lossReason = lead.loss_reason?.trim();
   const isCwkCard = (funnelName ?? "").toLowerCase().includes("cwk") || (lead.source ?? "").toLowerCase().includes("cwk");
+  const sourceState = parseLeadSource(lead.source);
+  const isReferralProgramLead = sourceState.is_referral_program;
 
   const handleExport = async (format: "pdf" | "excel") => {
     setExportingFormat(format);
@@ -243,9 +246,16 @@ export const LeadCard = ({
       </div>
 
       <div className="mb-2 flex items-start justify-between gap-2 pr-20">
-        <h4 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors group-hover:text-primary">
-          {lead.company_or_person}
-        </h4>
+        <div className="space-y-1">
+          {isReferralProgramLead && (
+            <span className="inline-flex items-center rounded-full bg-accent px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-accent-foreground shadow-sm">
+              Valle Indicacao
+            </span>
+          )}
+          <h4 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors group-hover:text-primary">
+            {lead.company_or_person}
+          </h4>
+        </div>
       </div>
 
       <div className="mb-2 flex items-center gap-1.5">
@@ -261,6 +271,11 @@ export const LeadCard = ({
         </Badge>
         {lead.contact_name && (
           <span className="truncate text-xs text-muted-foreground">{lead.contact_name}</span>
+        )}
+        {isReferralProgramLead && sourceState.indication_by && (
+          <span className="truncate text-[10px] font-medium text-accent">
+            Indicada por {sourceState.indication_by}
+          </span>
         )}
       </div>
 

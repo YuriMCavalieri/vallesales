@@ -95,6 +95,27 @@ export type LeadAdditionalContact = {
 };
 
 const INDICATION_SOURCE_PREFIX = "Indicacao:";
+const REFERRAL_PROGRAM_SOURCE_PREFIX = "Valle Indicacao:";
+const LEGACY_REFERRAL_PROGRAM_SOURCE_PREFIX = "Programa de Indicacao:";
+const REFERRAL_PROGRAM_SOURCE_LABEL = "Valle Indicacao";
+const LEGACY_REFERRAL_PROGRAM_SOURCE_LABEL = "Programa de Indicacao";
+
+export const formatLeadSourceLabel = (source: string) => {
+  if (source === "Indicacao") return "Indicacao";
+  if (source === LEGACY_REFERRAL_PROGRAM_SOURCE_LABEL || source === REFERRAL_PROGRAM_SOURCE_LABEL) return "Valle Indicacao";
+  return source;
+};
+
+export const buildReferralProgramSource = (indicationBy: string) => {
+  const trimmed = indicationBy.trim();
+  return trimmed ? `${REFERRAL_PROGRAM_SOURCE_PREFIX} ${trimmed}` : REFERRAL_PROGRAM_SOURCE_LABEL;
+};
+
+export const isReferralProgramLeadSource = (value: string | null | undefined) =>
+  (value ?? "").trim().toLowerCase() === REFERRAL_PROGRAM_SOURCE_LABEL.toLowerCase() ||
+  (value ?? "").trim().toLowerCase() === LEGACY_REFERRAL_PROGRAM_SOURCE_LABEL.toLowerCase() ||
+  (value ?? "").trim().toLowerCase().startsWith(REFERRAL_PROGRAM_SOURCE_PREFIX.toLowerCase()) ||
+  (value ?? "").trim().toLowerCase().startsWith(LEGACY_REFERRAL_PROGRAM_SOURCE_PREFIX.toLowerCase());
 
 export const parseLeadSource = (value: string | null | undefined) => {
   const source = value?.trim() ?? "";
@@ -102,6 +123,25 @@ export const parseLeadSource = (value: string | null | undefined) => {
     return {
       source: "",
       indication_by: "",
+      is_referral_program: false,
+    };
+  }
+
+  if (
+    source.toLowerCase() === REFERRAL_PROGRAM_SOURCE_LABEL.toLowerCase() ||
+    source.toLowerCase() === LEGACY_REFERRAL_PROGRAM_SOURCE_LABEL.toLowerCase() ||
+    source.toLowerCase().startsWith(REFERRAL_PROGRAM_SOURCE_PREFIX.toLowerCase()) ||
+    source.toLowerCase().startsWith(LEGACY_REFERRAL_PROGRAM_SOURCE_PREFIX.toLowerCase())
+  ) {
+    const sourcePrefix = source.toLowerCase().startsWith(REFERRAL_PROGRAM_SOURCE_PREFIX.toLowerCase())
+      ? REFERRAL_PROGRAM_SOURCE_PREFIX
+      : source.toLowerCase().startsWith(LEGACY_REFERRAL_PROGRAM_SOURCE_PREFIX.toLowerCase())
+        ? LEGACY_REFERRAL_PROGRAM_SOURCE_PREFIX
+        : "";
+    return {
+      source: REFERRAL_PROGRAM_SOURCE_LABEL,
+      indication_by: source.slice(sourcePrefix.length).trim(),
+      is_referral_program: true,
     };
   }
 
@@ -109,18 +149,24 @@ export const parseLeadSource = (value: string | null | undefined) => {
     return {
       source,
       indication_by: "",
+      is_referral_program: false,
     };
   }
 
   return {
     source: "Indicacao",
     indication_by: source.slice(INDICATION_SOURCE_PREFIX.length).trim(),
+    is_referral_program: false,
   };
 };
 
 export const serializeLeadSource = (source: string, indicationBy: string) => {
   const trimmedSource = source.trim();
   if (!trimmedSource) return null;
+  if (trimmedSource === LEGACY_REFERRAL_PROGRAM_SOURCE_LABEL || trimmedSource === REFERRAL_PROGRAM_SOURCE_LABEL) {
+    const trimmedIndicationBy = indicationBy.trim();
+    return trimmedIndicationBy ? `${REFERRAL_PROGRAM_SOURCE_PREFIX} ${trimmedIndicationBy}` : REFERRAL_PROGRAM_SOURCE_LABEL;
+  }
   if (trimmedSource !== "Indicacao") return trimmedSource;
 
   const trimmedIndicationBy = indicationBy.trim();

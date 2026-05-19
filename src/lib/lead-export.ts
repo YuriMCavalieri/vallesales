@@ -314,8 +314,8 @@ const drawLogoBadge = async (
 ) => {
   const soft = hexToRgb(theme.soft);
   const logoDataUrl = await loadAssetDataUrl(theme.logoUrl);
-  const paddingX = 10;
-  const paddingY = 10;
+  const paddingX = 6;
+  const paddingY = 6;
   const imageAreaWidth = width - paddingX * 2;
   const imageAreaHeight = height - paddingY * 2;
   const imageProps = doc.getImageProperties(logoDataUrl);
@@ -348,6 +348,40 @@ const drawLogoBadge = async (
     undefined,
     "FAST",
   );
+};
+
+const resolveHeaderTitleLayout = (
+  doc: import("jspdf").jsPDF,
+  title: string,
+  maxWidth: number,
+  options?: {
+    maxLines?: number;
+    preferredFontSize?: number;
+    minimumFontSize?: number;
+    lineHeightRatio?: number;
+  },
+) => {
+  const maxLines = options?.maxLines ?? 3;
+  const preferredFontSize = options?.preferredFontSize ?? 24;
+  const minimumFontSize = options?.minimumFontSize ?? 18;
+  const lineHeightRatio = options?.lineHeightRatio ?? 1.1;
+
+  let fontSize = preferredFontSize;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(fontSize);
+  let lines = doc.splitTextToSize(title, maxWidth) as string[];
+
+  while (fontSize > minimumFontSize && lines.length > maxLines) {
+    fontSize -= 1;
+    doc.setFontSize(fontSize);
+    lines = doc.splitTextToSize(title, maxWidth) as string[];
+  }
+
+  return {
+    fontSize,
+    lineHeight: Math.round(fontSize * lineHeightRatio),
+    lines,
+  };
 };
 
 const drawSectionCard = (
@@ -594,26 +628,31 @@ export const exportLeadAsPdf = async (context: LeadExportContext) => {
   const headerCardX = 24;
   const headerCardY = 20;
   const headerCardWidth = pageWidth - 48;
-  const logoX = 40;
+  const logoX = 36;
   const logoY = 30;
-  const logoWidth = 164;
-  const logoHeight = 60;
-  const textX = 222;
-  const textMaxWidth = pageWidth - 262;
-  const titleLines = doc.splitTextToSize(context.lead.company_or_person, textMaxWidth);
+  const logoWidth = 184;
+  const logoHeight = 72;
+  const textX = logoX + logoWidth + 22;
+  const textMaxWidth = headerCardX + headerCardWidth - textX - 20;
+  const titleLayout = resolveHeaderTitleLayout(doc, context.lead.company_or_person, textMaxWidth, {
+    preferredFontSize: 24,
+    minimumFontSize: 18,
+  });
+  const titleLines = titleLayout.lines;
   const subtitleLines = doc.splitTextToSize(
     `${theme.title} • Exportado em ${new Date().toLocaleString("pt-BR")}`,
     textMaxWidth,
   );
-  const titleLineHeight = 24;
+  const titleFontSize = titleLayout.fontSize;
+  const titleLineHeight = titleLayout.lineHeight;
   const subtitleLineHeight = 14;
   const textBlockHeight =
     titleLines.length * titleLineHeight +
     subtitleLines.length * subtitleLineHeight +
-    8;
-  const headerCardHeight = Math.max(96, Math.max(logoHeight, textBlockHeight) + 28);
+    10;
+  const headerCardHeight = Math.max(112, Math.max(logoHeight, textBlockHeight) + 36);
   const headerHeight = headerCardY + headerCardHeight + 24;
-  const textTop = headerCardY + 16;
+  const textTop = headerCardY + 18;
   const subtitleTop = textTop + titleLines.length * titleLineHeight + 8;
 
   doc.setFillColor(primary.r, primary.g, primary.b);
@@ -627,7 +666,7 @@ export const exportLeadAsPdf = async (context: LeadExportContext) => {
 
   doc.setTextColor(primary.r, primary.g, primary.b);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(24);
+  doc.setFontSize(titleFontSize);
   doc.text(titleLines, textX, textTop, { baseline: "top" });
 
   doc.setFont("helvetica", "normal");
@@ -755,24 +794,29 @@ export const exportDashboardAsPdf = async (context: DashboardExportContext) => {
   const headerCardX = 24;
   const headerCardY = 20;
   const headerCardWidth = pageWidth - 48;
-  const logoX = 40;
-  const logoY = 32;
-  const logoWidth = 164;
-  const logoHeight = 58;
-  const textX = 222;
-  const textMaxWidth = pageWidth - 262;
-  const titleLines = pageDoc.splitTextToSize(context.title, textMaxWidth);
+  const logoX = 36;
+  const logoY = 30;
+  const logoWidth = 184;
+  const logoHeight = 72;
+  const textX = logoX + logoWidth + 22;
+  const textMaxWidth = headerCardX + headerCardWidth - textX - 20;
+  const titleLayout = resolveHeaderTitleLayout(pageDoc, context.title, textMaxWidth, {
+    preferredFontSize: 22,
+    minimumFontSize: 17,
+  });
+  const titleLines = titleLayout.lines;
   const subtitleLines = pageDoc.splitTextToSize(
     context.subtitle || `Exportado em ${new Date().toLocaleString("pt-BR")}`,
     textMaxWidth,
   );
-  const titleLineHeight = 22;
+  const titleFontSize = titleLayout.fontSize;
+  const titleLineHeight = titleLayout.lineHeight;
   const subtitleLineHeight = 14;
   const textBlockHeight =
     titleLines.length * titleLineHeight +
     subtitleLines.length * subtitleLineHeight +
-    8;
-  const headerCardHeight = Math.max(94, Math.max(logoHeight, textBlockHeight) + 24);
+    10;
+  const headerCardHeight = Math.max(112, Math.max(logoHeight, textBlockHeight) + 36);
   const headerHeight = headerCardY + headerCardHeight + 22;
   const contentStartY = headerHeight + 20;
 
@@ -804,8 +848,8 @@ export const exportDashboardAsPdf = async (context: DashboardExportContext) => {
 
     pageDoc.setTextColor(primary.r, primary.g, primary.b);
     pageDoc.setFont("helvetica", "bold");
-    pageDoc.setFontSize(22);
-    pageDoc.text(titleLines, textX, headerCardY + 16, { baseline: "top" });
+    pageDoc.setFontSize(titleFontSize);
+    pageDoc.text(titleLines, textX, headerCardY + 18, { baseline: "top" });
 
     pageDoc.setTextColor(secondary.r, secondary.g, secondary.b);
     pageDoc.setFont("helvetica", "normal");
@@ -813,7 +857,7 @@ export const exportDashboardAsPdf = async (context: DashboardExportContext) => {
     pageDoc.text(
       subtitleLines,
       textX,
-      headerCardY + 16 + titleLines.length * titleLineHeight + 8,
+      headerCardY + 18 + titleLines.length * titleLineHeight + 8,
       { baseline: "top" },
     );
   };

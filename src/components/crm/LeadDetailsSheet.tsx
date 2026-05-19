@@ -53,7 +53,7 @@ import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
 import { parseDateValue } from "@/lib/date";
 import { exportLeadAsExcel, exportLeadAsPdf } from "@/lib/lead-export";
-import { COMPANY_MATURITY_LABELS, parseAdditionalContacts, parseLeadSource } from "@/lib/lead-form";
+import { COMPANY_MATURITY_LABELS, formatLeadSourceLabel, parseAdditionalContacts, parseLeadSource } from "@/lib/lead-form";
 import { toast } from "sonner";
 
 interface Props {
@@ -209,6 +209,7 @@ export const LeadDetailsSheet = ({
   const sourceState = parseLeadSource(lead.source);
   const isOpeningCompanyLead = lead.company_maturity === "opening_company";
   const isCwkLead = sourceState.source.toLowerCase().includes("cwk");
+  const isReferralProgramLead = sourceState.is_referral_program;
   const owner = profiles.find((profile) => profile.id === lead.owner_id);
   const ownerName = owner?.full_name || owner?.email || null;
   const assignableIds = new Set(assignableProfiles.map((profile) => profile.id));
@@ -286,11 +287,11 @@ export const LeadDetailsSheet = ({
         showCloseButton={false}
         className="flex h-[min(90vh,54rem)] w-[min(96vw,72rem)] max-w-none flex-col overflow-hidden rounded-2xl border p-0"
       >
-        <div className="shrink-0 bg-gradient-header p-6 text-header-foreground">
-          <SheetHeader className="space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <SheetTitle className="truncate text-xl text-header-foreground">
+        <div className="shrink-0 bg-gradient-header px-6 py-5 text-header-foreground">
+          <SheetHeader className="space-y-2">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="min-w-0 flex-1">
+                <SheetTitle className="text-xl leading-tight text-header-foreground break-words">
                   {lead.company_or_person}
                 </SheetTitle>
                 {lead.contact_name && (
@@ -299,17 +300,18 @@ export const LeadDetailsSheet = ({
                   </SheetDescription>
                 )}
               </div>
-              <div className="flex shrink-0 items-start gap-4">
-                <div className="flex flex-wrap items-center justify-end gap-1">
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-1.5">
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button
-                        size="icon"
+                        size="sm"
                         variant="ghost"
-                        className="h-8 w-8 text-header-foreground hover:bg-header-hover/10"
+                        className="h-9 gap-2 rounded-full border border-white/20 bg-white/10 px-3 text-header-foreground hover:bg-white/20"
                         disabled={!!exportingFormat}
                       >
                         {exportingFormat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                        Exportar
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-60 rounded-2xl p-2">
@@ -382,20 +384,20 @@ export const LeadDetailsSheet = ({
                     </Button>
                   )}
                   {onEdit && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-header-foreground hover:bg-header-hover/10"
-                      onClick={onEdit}
-                      disabled={!canEditLead}
-                    >
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-9 w-9 text-header-foreground hover:bg-header-hover/10"
+                    onClick={onEdit}
+                    disabled={!canEditLead}
+                  >
                       <Pencil className="h-4 w-4" />
                     </Button>
                   )}
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8 text-header-foreground hover:bg-destructive/30"
+                    className="h-9 w-9 text-header-foreground hover:bg-destructive/30"
                     onClick={handleDelete}
                     disabled={!canDeleteLead}
                   >
@@ -427,6 +429,11 @@ export const LeadDetailsSheet = ({
               {lead.has_been_contacted && (
                 <Badge variant="outline" className="border-success/30 bg-success/20 text-success">
                   Contato realizado
+                </Badge>
+              )}
+              {isReferralProgramLead && (
+                <Badge variant="outline" className="border-accent/30 bg-accent/15 text-accent">
+                  Valle Indicacao
                 </Badge>
               )}
             </div>
@@ -487,8 +494,8 @@ export const LeadDetailsSheet = ({
             )}
             {lead.cnpj && <Info label="CNPJ" value={lead.cnpj} />}
             {lead.employee_count && <Info label="Funcionarios" value={lead.employee_count} />}
-            {sourceState.source && <Info label="Origem" value={sourceState.source} />}
-            {sourceState.indication_by && <Info label="Indicação por" value={sourceState.indication_by} />}
+            {sourceState.source && <Info label="Origem" value={formatLeadSourceLabel(sourceState.source)} />}
+            {sourceState.indication_by && <Info label="Indicacao por" value={sourceState.indication_by} />}
             {lead.company_maturity && (
               <Info
                 label="Perfil empresarial"
@@ -501,6 +508,20 @@ export const LeadDetailsSheet = ({
             )}
             {lead.tax_regime && <Info label="Regime tributario" value={lead.tax_regime} />}
           </div>
+
+          {isReferralProgramLead && (
+            <Card className="space-y-3 border-accent/25 bg-accent/5 p-4">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">Valle Indicacao</h4>
+                <p className="text-xs text-muted-foreground">
+                  Este lead entrou pelo fluxo publico de indicacoes e precisa de abordagem comercial diferenciada.
+                </p>
+              </div>
+              {sourceState.indication_by && (
+                <Info label="Cliente que indicou" value={sourceState.indication_by} />
+              )}
+            </Card>
+          )}
 
           {(lead.contact_name || lead.phone || lead.email) && (
             <Card className="space-y-3 border-border/70 p-4">

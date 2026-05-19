@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Lead } from "@/types/crm";
 import { CONTACT_METHOD_OPTIONS, SOURCE_OPTIONS, TEMPERATURE_OPTIONS, UF_OPTIONS } from "@/lib/constants";
 import {
+  formatLeadSourceLabel,
   formatCnpj,
   formatPhone,
   getServiceTypeOptionsForFunnel,
@@ -303,7 +304,7 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
     if (!isValidLeadPhone(form.phone)) {
       nextErrors.phone = "Informe um telefone valido para o contato principal.";
     }
-    if (form.source === "Indicacao" && !form.indication_by.trim()) {
+    if ((form.source === "Indicacao" || form.source === "Valle Indicacao") && !form.indication_by.trim()) {
       nextErrors.indication_by = "Informe quem fez a indicação.";
     }
 
@@ -591,7 +592,10 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
                   onValueChange={(value) => {
                     patchForm({
                       source: value,
-                      indication_by: value === "Indicacao" ? form.indication_by : "",
+                      indication_by:
+                        value === "Indicacao" || value === "Valle Indicacao"
+                          ? form.indication_by
+                          : "",
                     });
                     clearError("indication_by");
                   }}
@@ -602,14 +606,14 @@ export const LeadFormDialog = ({ open, onOpenChange, lead, defaultStageId }: Pro
                   <SelectContent>
                     {SOURCE_OPTIONS.map((source) => (
                       <SelectItem key={source} value={source}>
-                        {source === "Indicacao" ? "Indicação" : source}
+                        {formatLeadSourceLabel(source)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </FieldBlock>
 
-              {form.source === "Indicacao" && (
+              {(form.source === "Indicacao" || form.source === "Valle Indicacao") && (
                 <FieldBlock error={errors.indication_by}>
                   <Label>Indicação por</Label>
                   <Input
