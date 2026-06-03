@@ -30,6 +30,7 @@ import { useFunnelAccessOptions } from "@/hooks/useFunnels";
 import type { Lead, PipelineStage, Profile, TrackingFlowKey } from "@/types/crm";
 import { CONTACT_METHOD_OPTIONS, formatCurrency, formatDate, formatDateTime } from "@/lib/constants";
 import {
+  AlertTriangle,
   Calendar,
   DollarSign,
   Download,
@@ -227,6 +228,7 @@ export const LeadDetailsSheet = ({
   const isReferralProgramLead = sourceState.is_referral_program;
   const owner = profiles.find((profile) => profile.id === lead.owner_id);
   const ownerName = owner?.full_name || owner?.email || null;
+  const lossReason = lead.loss_reason?.trim();
   const trackingCode = lead.entity_kind === "customer_tracking" ? lead.tracking_code?.trim() ?? "" : "";
   const assignableIds = new Set(assignableProfiles.map((profile) => profile.id));
   const ownerOptions = profiles.filter(
@@ -578,6 +580,18 @@ export const LeadDetailsSheet = ({
               {sourceState.indication_by && (
                 <Info label="Cliente que indicou" value={sourceState.indication_by} />
               )}
+            </Card>
+          )}
+
+          {isLost && lossReason && (
+            <Card className="space-y-3 border-destructive/30 bg-destructive/5 p-4">
+              <div className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <h4 className="text-sm font-semibold">Motivo da perda</h4>
+              </div>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-foreground">
+                {lossReason}
+              </p>
             </Card>
           )}
 
