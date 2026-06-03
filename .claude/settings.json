@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sS -X POST https://lqrfdqmayzcnmdjabtsu.supabase.co/functions/v1/public-create-lead -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(xargs grep -l \"export.*type Lead\\\\|export interface Lead\")"
+    ]
+  }
+}

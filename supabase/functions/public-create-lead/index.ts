@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const DEFAULT_FUNNEL_NAME = "NeoContador";
+const DEFAULT_FUNNEL_NAME = "Neocontador";
 
 const databaseUrl = Deno.env.get("SUPABASE_DB_URL");
 
@@ -33,6 +33,13 @@ type CreateLeadPayload = {
   uf?: unknown;
   notes?: unknown;
   funnel_name?: unknown;
+  utm_source?: unknown;
+  utm_medium?: unknown;
+  utm_campaign?: unknown;
+  utm_term?: unknown;
+  utm_content?: unknown;
+  landing_path?: unknown;
+  referrer?: unknown;
 };
 
 const json = (body: unknown, status = 200) =>
@@ -56,6 +63,39 @@ const normalizeTextKey = (value: string | null | undefined) =>
     .trim()
     .replace(/\s+/g, " ")
     .toLowerCase();
+
+const buildNotes = (payload: {
+  notes: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_term: string | null;
+  utm_content: string | null;
+  landing_path: string | null;
+  referrer: string | null;
+}) => {
+  const blocks: string[] = [];
+
+  if (payload.notes) {
+    blocks.push(["Mensagem / observacoes", payload.notes].join("\n"));
+  }
+
+  const trackingLines = [
+    payload.landing_path ? `Pagina: ${payload.landing_path}` : null,
+    payload.referrer ? `Referrer: ${payload.referrer}` : null,
+    payload.utm_source ? `utm_source: ${payload.utm_source}` : null,
+    payload.utm_medium ? `utm_medium: ${payload.utm_medium}` : null,
+    payload.utm_campaign ? `utm_campaign: ${payload.utm_campaign}` : null,
+    payload.utm_term ? `utm_term: ${payload.utm_term}` : null,
+    payload.utm_content ? `utm_content: ${payload.utm_content}` : null,
+  ].filter(Boolean) as string[];
+
+  if (trackingLines.length > 0) {
+    blocks.push(["Captacao publica", "Tracking", ...trackingLines].join("\n"));
+  }
+
+  return blocks.length > 0 ? blocks.join("\n\n") : null;
+};
 
 const resolveFunnelAndStage = async (funnelName: string) => {
   const funnels = await sql`
@@ -118,8 +158,18 @@ serve(async (req) => {
     const segment = normalizeOptionalString(body.segment);
     const city = normalizeOptionalString(body.city);
     const uf = normalizeOptionalString(body.uf);
-    const notes = normalizeOptionalString(body.notes);
     const funnelName = normalizeOptionalString(body.funnel_name) ?? DEFAULT_FUNNEL_NAME;
+
+    const notes = buildNotes({
+      notes: normalizeOptionalString(body.notes),
+      utm_source: normalizeOptionalString(body.utm_source),
+      utm_medium: normalizeOptionalString(body.utm_medium),
+      utm_campaign: normalizeOptionalString(body.utm_campaign),
+      utm_term: normalizeOptionalString(body.utm_term),
+      utm_content: normalizeOptionalString(body.utm_content),
+      landing_path: normalizeOptionalString(body.landing_path),
+      referrer: normalizeOptionalString(body.referrer),
+    });
 
     const { funnelId, stageId } = await resolveFunnelAndStage(funnelName);
 
