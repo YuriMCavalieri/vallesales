@@ -5,6 +5,9 @@ verify_jwt = false
 [functions.public-lead-intake]
 verify_jwt = false
 
+[functions.public-create-lead]
+verify_jwt = false
+
 [functions.public-lead-upload]
 verify_jwt = false
 
