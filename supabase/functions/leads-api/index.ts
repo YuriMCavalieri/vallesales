@@ -74,6 +74,14 @@ const allowedLeadFields = new Set([
   "city",
   "uf",
   "company_maturity",
+  "contract_federal_regime",
+  "contract_state_registration",
+  "contract_monthly_fee",
+  "contract_fiscal_code",
+  "contract_accounting_code",
+  "contract_labor_code",
+  "contract_financial_codes",
+  "contract_include_address",
   "owner_id",
   "estimated_value",
   "temperature",
@@ -164,6 +172,16 @@ const normalizeServiceTypes = (value: unknown) => {
   ));
 };
 
+const normalizeContractFinancialCodes = (value: unknown) => {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(
+    value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  ));
+};
+
 const normalizeAdditionalContacts = (value: unknown) => {
   if (!Array.isArray(value)) return [] as AdditionalContactPayload[];
   return value
@@ -230,6 +248,30 @@ const prepareLeadPayload = (
   }
   if (Object.prototype.hasOwnProperty.call(normalized, "company_maturity")) {
     normalized.company_maturity = normalizeOptionalString(normalized.company_maturity);
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, "contract_federal_regime")) {
+    normalized.contract_federal_regime = normalizeOptionalString(normalized.contract_federal_regime);
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, "contract_state_registration")) {
+    normalized.contract_state_registration = normalizeOptionalString(normalized.contract_state_registration);
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, "contract_monthly_fee")) {
+    normalized.contract_monthly_fee = normalizeOptionalString(normalized.contract_monthly_fee);
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, "contract_fiscal_code")) {
+    normalized.contract_fiscal_code = normalizeOptionalString(normalized.contract_fiscal_code);
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, "contract_accounting_code")) {
+    normalized.contract_accounting_code = normalizeOptionalString(normalized.contract_accounting_code);
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, "contract_labor_code")) {
+    normalized.contract_labor_code = normalizeOptionalString(normalized.contract_labor_code);
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, "contract_financial_codes")) {
+    normalized.contract_financial_codes = normalizeContractFinancialCodes(normalized.contract_financial_codes);
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, "contract_include_address")) {
+    normalized.contract_include_address = normalized.contract_include_address === true;
   }
   if (Object.prototype.hasOwnProperty.call(normalized, "owner_id")) {
     normalized.owner_id = normalizeOptionalString(normalized.owner_id);
@@ -727,7 +769,9 @@ serve(async (req) => {
       const [created] = await sql`
         insert into public.leads (
           funnel_id, company_or_person, contact_name, phone, email, employee_count, employee_count_clt, employee_count_pj,
-          cnpj, source, segment, segment_other, city, uf, owner_id, estimated_value, temperature, stage_id,
+          cnpj, source, segment, segment_other, city, uf, contract_federal_regime, contract_state_registration,
+          contract_monthly_fee, contract_fiscal_code, contract_accounting_code, contract_labor_code,
+          contract_financial_codes, contract_include_address, owner_id, estimated_value, temperature, stage_id,
           has_been_contacted, contact_method, next_follow_up, loss_reason, notes, additional_contacts, tax_regime,
           monthly_revenue_managerial, monthly_revenue_fiscal, monthly_invoice_count, payroll_gross_value,
           bank_account_count, bank_accounts_split, financial_system, accounting_pain_points, company_maturity, entity_kind,
@@ -735,9 +779,11 @@ serve(async (req) => {
         ) values (
           ${lead.funnel_id as string}, ${lead.company_or_person as string}, ${lead.contact_name ?? null}, ${lead.phone ?? null},
           ${lead.email ?? null}, ${lead.employee_count ?? null}, ${lead.employee_count_clt ?? null}, ${lead.employee_count_pj ?? null},
-          ${lead.cnpj ?? null}, ${lead.source ?? null}, ${lead.segment ?? null}, ${lead.segment_other ?? null},
-          ${lead.city ?? null}, ${lead.uf ?? null}, ${lead.owner_id ?? null}, ${lead.estimated_value ?? 0},
-          ${lead.temperature ?? "morno"}, ${lead.stage_id as string}, ${lead.has_been_contacted ?? false},
+          ${lead.cnpj ?? null}, ${lead.source ?? null}, ${lead.segment ?? null}, ${lead.segment_other ?? null}, ${lead.city ?? null},
+          ${lead.uf ?? null}, ${lead.contract_federal_regime ?? null}, ${lead.contract_state_registration ?? null},
+          ${lead.contract_monthly_fee ?? null}, ${lead.contract_fiscal_code ?? null}, ${lead.contract_accounting_code ?? null},
+          ${lead.contract_labor_code ?? null}, ${lead.contract_financial_codes ?? []}, ${lead.contract_include_address ?? false},
+          ${lead.owner_id ?? null}, ${lead.estimated_value ?? 0}, ${lead.temperature ?? "morno"}, ${lead.stage_id as string}, ${lead.has_been_contacted ?? false},
           ${lead.contact_method ?? null}, ${lead.next_follow_up ?? null}, ${lead.loss_reason ?? null}, ${lead.notes ?? null},
           ${lead.additional_contacts ?? []}, ${lead.tax_regime ?? null}, ${lead.monthly_revenue_managerial ?? null},
           ${lead.monthly_revenue_fiscal ?? null}, ${lead.monthly_invoice_count ?? null}, ${lead.payroll_gross_value ?? null},
@@ -924,7 +970,9 @@ serve(async (req) => {
       const [createdTrackingLead] = await sql`
         insert into public.leads (
           funnel_id, company_or_person, contact_name, phone, email, employee_count, employee_count_clt, employee_count_pj,
-          cnpj, source, segment, segment_other, city, uf, owner_id, estimated_value, temperature, stage_id,
+          cnpj, source, segment, segment_other, city, uf, contract_federal_regime, contract_state_registration,
+          contract_monthly_fee, contract_fiscal_code, contract_accounting_code, contract_labor_code,
+          contract_financial_codes, contract_include_address, owner_id, estimated_value, temperature, stage_id,
           has_been_contacted, contact_method, next_follow_up, loss_reason, notes, additional_contacts, tax_regime,
           monthly_revenue_managerial, monthly_revenue_fiscal, monthly_invoice_count, payroll_gross_value,
           bank_account_count, bank_accounts_split, financial_system, accounting_pain_points, company_maturity,
@@ -932,7 +980,11 @@ serve(async (req) => {
         ) values (
           ${targetFunnel.id}, ${current.company_or_person}, ${current.contact_name}, ${current.phone}, ${current.email},
           ${current.employee_count}, ${current.employee_count_clt}, ${current.employee_count_pj}, ${current.cnpj},
-          ${current.source}, ${current.segment}, ${current.segment_other}, ${current.city}, ${current.uf}, ${current.owner_id},
+          ${current.source}, ${current.segment}, ${current.segment_other}, ${current.city}, ${current.uf},
+          ${current.contract_federal_regime ?? null}, ${current.contract_state_registration ?? null},
+          ${current.contract_monthly_fee ?? null}, ${current.contract_fiscal_code ?? null},
+          ${current.contract_accounting_code ?? null}, ${current.contract_labor_code ?? null},
+          ${current.contract_financial_codes ?? []}, ${current.contract_include_address ?? false}, ${current.owner_id},
           ${current.estimated_value ?? 0}, ${current.temperature ?? "morno"}, ${firstTrackingStage.id},
           ${current.has_been_contacted ?? false}, ${current.contact_method ?? null}, ${current.next_follow_up ?? null},
           ${null}, ${current.notes ?? null}, ${current.additional_contacts ?? []}, ${current.tax_regime ?? null},

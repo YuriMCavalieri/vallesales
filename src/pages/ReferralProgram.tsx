@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import {
-  ArrowRight,
   CheckCircle2,
   ChevronRight,
   Copy,
@@ -35,10 +34,10 @@ const formSchema = z.object({
   referrer_company: z.string().trim(),
   referrer_email: z.string().trim().email("Informe um e-mail válido."),
   referrer_phone: z.string().trim(),
-  referred_company_or_person: z.string().trim().min(2, "Informe a empresa ou pessoa indicada."),
+  referred_company_or_person: z.string().trim(),
   referred_contact_name: z.string().trim().min(2, "Informe o nome do contato indicado."),
-  referred_email: z.string().trim().optional(),
-  referred_phone: z.string().trim().optional(),
+  referred_email: z.string().trim().email("Informe o e-mail do contato indicado."),
+  referred_phone: z.string().trim(),
   city: z.string().trim(),
   uf: z.string().trim(),
   notes: z.string().trim(),
@@ -318,26 +317,14 @@ const ReferralProgram = () => {
       return false;
     }
 
-    if (!form.referred_email.trim() && !form.referred_phone.trim()) {
-      toast.error("Informe ao menos telefone ou e-mail da pessoa indicada.");
-      return false;
-    }
-
-    if (form.referred_phone.trim() && !isValidLeadPhone(form.referred_phone)) {
+    if (!isValidLeadPhone(form.referred_phone)) {
       toast.error("O telefone da pessoa indicada está inválido.");
       return false;
     }
 
-    if (form.referred_email.trim()) {
-      const emailCheck = z.string().email().safeParse(form.referred_email.trim());
-      if (!emailCheck.success) {
-        toast.error("O e-mail da pessoa indicada está inválido.");
-        return false;
-      }
-    }
-
-    if (form.service_types.length === 0) {
-      toast.error("Selecione ao menos um serviço de interesse para a indicação.");
+    const emailCheck = z.string().email().safeParse(form.referred_email.trim());
+    if (!emailCheck.success) {
+      toast.error("O e-mail da pessoa indicada está inválido.");
       return false;
     }
 
@@ -488,7 +475,7 @@ const ReferralProgram = () => {
                 <p className="max-w-xl text-sm leading-7 text-white/78 sm:text-base">
                   Conhece alguém que pode se beneficiar das soluções da Valle? Envie a indicação
                   em poucos minutos, acompanhe cada etapa por aqui e, se o cliente fechar
-                  contrato, você poderá receber um prêmio especial.
+                  contrato, você receberá um prêmio especial.
                 </p>
               </div>
 
@@ -653,7 +640,7 @@ const ReferralProgram = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="referrer-phone">Telefone *</Label>
+                        <Label htmlFor="referrer-phone">Telefone/WhatsApp *</Label>
                         <Input
                           id="referrer-phone"
                           value={form.referrer_phone}
@@ -670,17 +657,6 @@ const ReferralProgram = () => {
                     <p className="text-sm font-semibold text-slate-900">Quem você quer indicar</p>
 
                     <div className="space-y-2">
-                      <Label htmlFor="referred-company">Empresa ou pessoa *</Label>
-                      <Input
-                        id="referred-company"
-                        value={form.referred_company_or_person}
-                        onChange={(event) => patchForm({ referred_company_or_person: event.target.value })}
-                        placeholder="Nome da empresa ou profissional"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
                       <Label htmlFor="referred-contact">Nome do contato *</Label>
                       <Input
                         id="referred-contact"
@@ -691,26 +667,38 @@ const ReferralProgram = () => {
                       />
                     </div>
 
+                    <div className="space-y-2">
+                      <Label htmlFor="referred-company">Empresa ou pessoa</Label>
+                      <Input
+                        id="referred-company"
+                        value={form.referred_company_or_person}
+                        onChange={(event) => patchForm({ referred_company_or_person: event.target.value })}
+                        placeholder="Nome da empresa ou profissional"
+                      />
+                    </div>
+
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <Label htmlFor="referred-phone">Telefone</Label>
+                        <Label htmlFor="referred-phone">Telefone/WhatsApp *</Label>
                         <Input
                           id="referred-phone"
                           value={form.referred_phone}
                           onChange={(event) => patchForm({ referred_phone: formatPhone(event.target.value) })}
                           placeholder="(31) 99999-9999"
                           inputMode="tel"
+                          required
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="referred-email">E-mail</Label>
+                        <Label htmlFor="referred-email">E-mail *</Label>
                         <Input
                           id="referred-email"
                           type="email"
                           value={form.referred_email}
                           onChange={(event) => patchForm({ referred_email: event.target.value })}
                           placeholder="contato@empresa.com"
+                          required
                         />
                       </div>
                     </div>
@@ -744,7 +732,7 @@ const ReferralProgram = () => {
                     </div>
 
                     <div className="space-y-3">
-                      <Label>Serviços de interesse *</Label>
+                      <Label>Serviços de interesse</Label>
                       <div className="grid gap-2 rounded-2xl border border-[#e5ddd4] bg-[#faf7f3] p-3">
                         {FORM_SERVICE_TYPE_OPTIONS.map((serviceType) => {
                           const checked = form.service_types.includes(serviceType);
@@ -1008,31 +996,6 @@ const ReferralProgram = () => {
               ))}
             </CardContent>
           </Card>
-        </div>
-      </section>
-
-      <section className="px-4 pb-8 md:px-6">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 rounded-[2rem] border border-white/10 bg-white/6 px-6 py-6 text-white backdrop-blur md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/60">
-              Valle Consultores
-            </p>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/72">
-              O Valle Indicação foi pensado para tornar o processo de indicação mais simples, organizado e transparente.
-            </p>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/72">
-              Você indica, a Valle conduz e acompanha cada etapa, enquanto você visualiza os avanços com facilidade.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          >
-            Voltar ao topo
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
         </div>
       </section>
 

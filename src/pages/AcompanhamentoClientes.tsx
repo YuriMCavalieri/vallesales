@@ -6,7 +6,7 @@ import { LeadDetailsSheet } from "@/components/crm/LeadDetailsSheet";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useFunnelAccessOptions } from "@/hooks/useFunnels";
-import { useArchiveLead, useLeads, useProfiles, useStages } from "@/hooks/useLeads";
+import { useArchiveLead, useDeleteLead, useLeads, useProfiles, useStages } from "@/hooks/useLeads";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/useUserRoles";
 import type { Funnel, Lead } from "@/types/crm";
@@ -22,6 +22,7 @@ const AcompanhamentoClientes = () => {
   const trackingFunnelsQuery = useFunnelAccessOptions(!!user, { module: "customer_tracking" });
   const profiles = useProfiles(!!user);
   const archiveLead = useArchiveLead();
+  const deleteLead = useDeleteLead();
   const [activeTrackingFunnelId, setActiveTrackingFunnelId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -96,6 +97,22 @@ const AcompanhamentoClientes = () => {
     if (!shouldArchive) return;
 
     await archiveLead.mutateAsync(lead);
+
+    if (selectedLead?.id === lead.id) {
+      setDetailsOpen(false);
+      setSelectedLead(null);
+    }
+  };
+
+  const handleDeleteTrackingLead = async (lead: Lead) => {
+    if (!perms.canDeleteLead) return;
+
+    const shouldDelete = window.confirm(
+      "Deseja excluir este cliente em acompanhamento permanentemente? Esta acao nao pode ser desfeita.",
+    );
+    if (!shouldDelete) return;
+
+    await deleteLead.mutateAsync(lead);
 
     if (selectedLead?.id === lead.id) {
       setDetailsOpen(false);
@@ -221,6 +238,7 @@ const AcompanhamentoClientes = () => {
               wonDialogKeepLabel={flowKey === "opening_company" ? "Concluir e seguir" : "Concluir fluxo"}
               showWonArchiveAction
               onArchiveLead={handleArchiveTrackingLead}
+              onDeleteLead={perms.canDeleteLead ? handleDeleteTrackingLead : undefined}
             />
           </div>
         )}
@@ -234,7 +252,7 @@ const AcompanhamentoClientes = () => {
         profiles={profiles.data ?? []}
         stages={stages.data ?? []}
         canEditLead={selectedLead ? canEditLead(selectedLead) : false}
-        canDeleteLead={false}
+        canDeleteLead={perms.canDeleteLead}
         archiveLead={selectedLead ? async () => {
           await handleArchiveTrackingLead(selectedLead);
         } : undefined}

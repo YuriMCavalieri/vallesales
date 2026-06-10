@@ -40,7 +40,7 @@ export const TrackingLookupForm = ({
               Consulte sua jornada
             </h2>
             <p className="max-w-md text-sm leading-6 text-white/74">
-              Informe o c\u00F3digo recebido para visualizar a etapa atual do seu projeto.
+              Informe o código recebido para visualizar a etapa atual do seu projeto.
             </p>
           </div>
         </div>
@@ -48,7 +48,7 @@ export const TrackingLookupForm = ({
         <div className="grid gap-4">
           <div className="space-y-2">
             <Label htmlFor="tracking-code" className="text-white">
-              C\u00F3digo de acompanhamento
+              Código de acompanhamento
             </Label>
             <Input
               id="tracking-code"

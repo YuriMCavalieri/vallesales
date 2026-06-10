@@ -53,7 +53,7 @@ export const ProjectTrackingPanel = ({ data }: ProjectTrackingPanelProps) => {
           Seu acompanhamento
         </h2>
         <p className="max-w-2xl text-sm leading-6 text-white/74 sm:text-base">
-          Veja abaixo a etapa atual e os pr\u00F3ximos passos do seu processo.
+          Veja abaixo a etapa atual e os próximos passos do seu processo.
         </p>
       </div>
 
@@ -91,7 +91,7 @@ export const ProjectTrackingPanel = ({ data }: ProjectTrackingPanelProps) => {
                   <div>
                     <p className="text-3xl font-semibold text-white">{data.progressPercentage}%</p>
                     <p className="text-sm text-white/68">
-                      {completedSteps} de {data.steps.length} etapas conclu\u00EDdas
+                      {completedSteps} de {data.steps.length} etapas concluídas
                     </p>
                   </div>
                 </div>

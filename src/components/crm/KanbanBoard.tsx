@@ -53,6 +53,7 @@ interface Props {
   getWonLeadTransferActions?: (lead: Lead) => Array<{ flow: TrackingFlowKey; label: string }>;
   onWonLeadTransfer?: (lead: Lead, flow: TrackingFlowKey) => Promise<void>;
   onArchiveLead?: (lead: Lead) => Promise<void>;
+  onDeleteLead?: (lead: Lead) => Promise<void>;
 }
 
 const stageColorBar: Record<string, string> = {
@@ -88,6 +89,7 @@ export const KanbanBoard = ({
   getWonLeadTransferActions,
   onWonLeadTransfer,
   onArchiveLead,
+  onDeleteLead,
 }: Props) => {
   const update = useUpdateLead();
   const archiveLead = useArchiveLead();
@@ -650,6 +652,8 @@ export const KanbanBoard = ({
                             isHighlighted={highlightedLeadId === lead.id}
                             onArchive={onArchiveLead ? () => onArchiveLead(lead) : undefined}
                             archiveLabel={lead.entity_kind === "customer_tracking" ? "Arquivar cliente" : "Arquivar lead"}
+                            onDelete={onDeleteLead ? () => onDeleteLead(lead) : undefined}
+                            deleteLabel={lead.entity_kind === "customer_tracking" ? "Excluir cliente" : "Excluir lead"}
                             onClick={() => onSelectLead(lead)}
                             draggable={canMoveLead(lead)}
                             onDragStart={(event) => {

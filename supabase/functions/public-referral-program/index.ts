@@ -358,12 +358,11 @@ const handleSubmitReferral = async (body: ReferralPayload) => {
   if (!referrerName) return fail("Informe o nome de quem esta indicando.");
   if (!referrerEmail) return fail("Informe o e-mail de quem esta indicando.");
   if (countPhoneDigits(referrerPhone) < 10) return fail("Informe um telefone valido para quem esta indicando.");
-  if (!referredCompanyOrPerson) return fail("Informe a empresa ou pessoa indicada.");
   if (!referredContactName) return fail("Informe o nome do contato indicado.");
-  if (countPhoneDigits(referredPhone) < 10 && !referredEmail) {
-    return fail("Informe ao menos telefone ou e-mail do contato indicado.");
-  }
-  if (serviceTypes.length === 0) return fail("Selecione ao menos um servico de interesse.");
+  if (countPhoneDigits(referredPhone) < 10) return fail("Informe um telefone valido do contato indicado.");
+  if (!referredEmail) return fail("Informe o e-mail do contato indicado.");
+
+  const referredLeadName = referredCompanyOrPerson ?? referredContactName;
 
   const landingPath = normalizeOptionalString(body.landing_path);
   const externalReferrer = normalizeOptionalString(body.referrer);
@@ -412,7 +411,7 @@ const handleSubmitReferral = async (body: ReferralPayload) => {
         duplicate: true,
         lead_id: recentDuplicate.id,
         tracking_token: existingEntry.access_token as string,
-        referred_company_or_person: referredCompanyOrPerson,
+        referred_company_or_person: referredLeadName,
         referred_contact_name: referredContactName,
       });
     }
@@ -454,7 +453,7 @@ const handleSubmitReferral = async (body: ReferralPayload) => {
       service_types
     ) values (
       ${funnelId},
-      ${referredCompanyOrPerson},
+      ${referredLeadName},
       'existing_company',
       ${referredContactName},
       ${referredPhone},

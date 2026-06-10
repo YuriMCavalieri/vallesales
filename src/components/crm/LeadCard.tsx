@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Phone,
   Copy,
+  Trash2,
   User,
   UserX,
   Zap,
@@ -35,6 +36,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { exportLeadAsExcel, exportLeadAsPdf } from "@/lib/lead-export";
 import { parseLeadSource } from "@/lib/lead-form";
+import { buildValleContractSummary, hasValleContractSelections } from "@/lib/valle-contract";
+import { isValleSalesFunnel } from "@/lib/customer-tracking";
 import { toast } from "sonner";
 
 interface Props {
@@ -50,6 +53,8 @@ interface Props {
   draggable?: boolean;
   onArchive?: () => void | Promise<void>;
   archiveLabel?: string;
+  onDelete?: () => void | Promise<void>;
+  deleteLabel?: string;
 }
 
 const tempStyles: Record<string, string> = {
@@ -97,6 +102,8 @@ export const LeadCard = ({
   draggable = true,
   onArchive,
   archiveLabel = "Arquivar",
+  onDelete,
+  deleteLabel = lead.entity_kind === "customer_tracking" ? "Excluir cliente" : "Excluir lead",
 }: Props) => {
   const [exportingFormat, setExportingFormat] = useState<"pdf" | "excel" | null>(null);
 
@@ -111,9 +118,11 @@ export const LeadCard = ({
   const actionToday = needsActionToday(lead);
   const lossReason = lead.loss_reason?.trim();
   const isCwkCard = (funnelName ?? "").toLowerCase().includes("cwk") || (lead.source ?? "").toLowerCase().includes("cwk");
+  const isValleContractFunnel = isValleSalesFunnel(funnelName) || hasValleContractSelections(lead);
   const sourceState = parseLeadSource(lead.source);
   const isReferralProgramLead = sourceState.is_referral_program;
   const trackingCode = lead.entity_kind === "customer_tracking" ? lead.tracking_code?.trim() ?? "" : "";
+  const valleContractSummary = isValleContractFunnel ? buildValleContractSummary(lead) : "";
 
   const handleExport = async (format: "pdf" | "excel") => {
     setExportingFormat(format);
@@ -148,6 +157,17 @@ export const LeadCard = ({
       toast.success("Codigo de acompanhamento copiado.");
     } catch {
       toast.error("Nao foi possivel copiar o codigo agora.");
+    }
+  };
+
+  const handleCopyValleContractSummary = async () => {
+    if (!valleContractSummary) return;
+
+    try {
+      await navigator.clipboard.writeText(valleContractSummary);
+      toast.success("Dados do contrato copiados.");
+    } catch {
+      toast.error("Nao foi possivel copiar os dados do contrato agora.");
     }
   };
 
@@ -263,6 +283,23 @@ export const LeadCard = ({
                 </span>
               </div>
             </DropdownMenuItem>
+            {isValleContractFunnel && (
+              <DropdownMenuItem
+                className="rounded-xl px-3 py-2.5"
+                onSelect={(event) => {
+                  event.preventDefault();
+                  void handleCopyValleContractSummary();
+                }}
+              >
+                <Copy className="mr-2 h-4 w-4 text-accent" />
+                <div className="flex min-w-0 flex-col">
+                  <span className="font-medium">Copiar dados do contrato</span>
+                  <span className="text-xs text-muted-foreground">
+                    Resumo pronto para colar no assistente da Valle
+                  </span>
+                </div>
+              </DropdownMenuItem>
+            )}
             {onArchive && (
               <>
                 <DropdownMenuSeparator />
@@ -278,6 +315,26 @@ export const LeadCard = ({
                     <span className="font-medium">{archiveLabel}</span>
                     <span className="text-xs text-muted-foreground">
                       Remove este card do fluxo ativo e envia para o historico
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              </>
+            )}
+            {onDelete && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="rounded-xl px-3 py-2.5 text-destructive focus:text-destructive"
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    void onDelete();
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="font-medium">{deleteLabel}</span>
+                    <span className="text-xs text-muted-foreground">
+                      Remove este registro permanentemente
                     </span>
                   </div>
                 </DropdownMenuItem>

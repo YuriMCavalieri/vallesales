@@ -19,17 +19,17 @@ import type { ProjectTrackingConfigResponse, ProjectTrackingLookupResponse } fro
 const infoCards = [
   {
     title: "Consulta segura",
-    body: "Acesse somente as informa\u00E7\u00F5es vinculadas ao seu c\u00F3digo.",
+    body: "Acesse somente as informações vinculadas ao seu código.",
     icon: <ShieldCheck className="h-4 w-4" />,
   },
   {
     title: "Andamento atualizado",
-    body: "Quando o projeto avan\u00E7ar, a etapa exibida tamb\u00E9m ser\u00E1 atualizada.",
+    body: "Quando o projeto avançar, a etapa exibida também será atualizada.",
     icon: <Waypoints className="h-4 w-4" />,
   },
   {
     title: "Etapas em linguagem simples",
-    body: "Voc\u00EA acompanha o que foi feito, o que est\u00E1 em andamento e os pr\u00F3ximos passos.",
+    body: "Você acompanha o que foi feito, o que está em andamento e os próximos passos.",
     icon: <Sparkles className="h-4 w-4" />,
   },
 ] as const;
@@ -104,7 +104,7 @@ const TrackingLookupPage = () => {
 
     if (!resolvedTrackingCode) {
       setTrackingData(null);
-      setErrorMessage("Informe o c\u00F3digo de acompanhamento.");
+      setErrorMessage("Informe o código de acompanhamento.");
       return;
     }
 
@@ -192,7 +192,7 @@ const TrackingLookupPage = () => {
                     Acompanhe seu projeto
                   </h1>
                   <p className="max-w-xl text-base leading-7 text-white/76 sm:text-lg">
-                    Consulte o andamento do seu processo com o c\u00F3digo enviado pela nossa equipe.
+                    {"Consulte o andamento do seu processo com o código enviado pela nossa equipe."}
                   </p>
                 </div>
               </div>

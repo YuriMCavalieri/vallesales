@@ -6,7 +6,7 @@ import type {
 } from "@/types/project-tracking";
 
 export const GENERIC_TRACKING_LOOKUP_ERROR =
-  "N\u00E3o encontramos um acompanhamento com os dados informados. Confira o c\u00F3digo ou fale com nossa equipe.";
+  "Não encontramos um acompanhamento com os dados informados. Confira o código ou fale com nossa equipe.";
 
 export const sanitizeTrackingCodeInput = (value: string) =>
   value.toUpperCase().replace(/\s+/g, "").slice(0, 12);
@@ -33,19 +33,19 @@ export const formatDocumentNumberInput = (value: string) => {
 
 export const FLOW_LABELS: Record<ProjectTrackingFlowType, string> = {
   company_opening: "Abertura da sua empresa",
-  existing_company: "Implanta\u00E7\u00E3o do atendimento cont\u00E1bil",
+  existing_company: "Implantação do atendimento contábil",
 };
 
 export const STATUS_COPY: Record<ProjectTrackingStatus, string> = {
   active: "Em andamento",
-  completed: "Conclu\u00EDdo",
+  completed: "Concluído",
   paused: "Pausado",
 };
 
 export const STEP_STATUS_COPY: Record<ProjectTrackingStepStatus, string> = {
-  completed: "Etapa conclu\u00EDda",
+  completed: "Etapa concluída",
   current: "Em andamento",
-  pending: "Pr\u00F3xima etapa",
+  pending: "Próxima etapa",
 };
 
 export const shouldRequireDocument = (mode: DocumentValidationMode) => mode === "required";

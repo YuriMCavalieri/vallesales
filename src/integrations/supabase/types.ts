@@ -156,6 +156,14 @@ export type Database = {
           cnpj: string | null
           company_maturity: string | null
           company_or_person: string
+          contract_accounting_code: string | null
+          contract_federal_regime: string | null
+          contract_financial_codes: string[]
+          contract_fiscal_code: string | null
+          contract_include_address: boolean
+          contract_labor_code: string | null
+          contract_monthly_fee: string | null
+          contract_state_registration: string | null
           contact_method: Database["public"]["Enums"]["contact_method"] | null
           contact_name: string | null
           created_at: string
@@ -211,6 +219,14 @@ export type Database = {
           cnpj?: string | null
           company_maturity?: string | null
           company_or_person: string
+          contract_accounting_code?: string | null
+          contract_federal_regime?: string | null
+          contract_financial_codes?: string[]
+          contract_fiscal_code?: string | null
+          contract_include_address?: boolean
+          contract_labor_code?: string | null
+          contract_monthly_fee?: string | null
+          contract_state_registration?: string | null
           contact_method?: Database["public"]["Enums"]["contact_method"] | null
           contact_name?: string | null
           created_at?: string
@@ -264,6 +280,14 @@ export type Database = {
           cnpj?: string | null
           company_maturity?: string | null
           company_or_person?: string
+          contract_accounting_code?: string | null
+          contract_federal_regime?: string | null
+          contract_financial_codes?: string[]
+          contract_fiscal_code?: string | null
+          contract_include_address?: boolean
+          contract_labor_code?: string | null
+          contract_monthly_fee?: string | null
+          contract_state_registration?: string | null
           contact_method?: Database["public"]["Enums"]["contact_method"] | null
           contact_name?: string | null
           created_at?: string

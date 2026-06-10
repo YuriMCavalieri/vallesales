@@ -29,6 +29,12 @@ import {
   TAX_REGIME_OPTIONS,
 } from "@/lib/lead-form";
 import { isValleSalesFunnel } from "@/lib/customer-tracking";
+import {
+  VALLE_CONTRACT_ACCOUNTING_OPTIONS,
+  VALLE_CONTRACT_FINANCIAL_OPTIONS,
+  VALLE_CONTRACT_FISCAL_OPTIONS,
+  VALLE_CONTRACT_LABOR_OPTIONS,
+} from "@/lib/valle-contract";
 import { Loader2, Plus, Trash2, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -71,6 +77,12 @@ type FormState = {
   next_follow_up: string;
   notes: string;
   company_maturity: string;
+  contract_state_registration: string;
+  contract_fiscal_code: string;
+  contract_accounting_code: string;
+  contract_labor_code: string;
+  contract_financial_codes: string[];
+  contract_include_address: boolean;
   additional_contacts: LeadAdditionalContact[];
   tax_regime: string;
   monthly_revenue_managerial: string;
@@ -154,6 +166,12 @@ const buildInitialForm = (
     next_follow_up: lead?.next_follow_up ?? "",
     notes: lead?.notes ?? "",
     company_maturity: lead?.company_maturity ?? "",
+    contract_state_registration: lead?.contract_state_registration ?? "",
+    contract_fiscal_code: lead?.contract_fiscal_code ?? "",
+    contract_accounting_code: lead?.contract_accounting_code ?? "",
+    contract_labor_code: lead?.contract_labor_code ?? "",
+    contract_financial_codes: lead?.contract_financial_codes ?? [],
+    contract_include_address: lead?.contract_include_address ?? false,
     additional_contacts: parseAdditionalContacts(lead?.additional_contacts),
     tax_regime: lead?.tax_regime ?? "",
     monthly_revenue_managerial: lead?.monthly_revenue_managerial ?? "",
@@ -239,6 +257,7 @@ export const LeadFormDialog = ({
     () => stages.find((stage) => stage.id === form.stage_id) ?? null,
     [form.stage_id, stages],
   );
+  const isValleContractFunnel = isValleSalesFunnel(selectedFunnel?.name);
   const canManuallyArchiveCurrentLead = Boolean(
     lead &&
     !lead.is_archived &&
@@ -289,6 +308,14 @@ export const LeadFormDialog = ({
       service_types: checked
         ? Array.from(new Set([...form.service_types, serviceType]))
         : form.service_types.filter((item) => item !== serviceType),
+    });
+  };
+
+  const toggleContractFinancialCode = (code: string, checked: boolean) => {
+    patchForm({
+      contract_financial_codes: checked
+        ? Array.from(new Set([...form.contract_financial_codes, code]))
+        : form.contract_financial_codes.filter((item) => item !== code),
     });
   };
 
@@ -374,6 +401,12 @@ export const LeadFormDialog = ({
       loss_reason: lostReasonText?.trim() || (lead?.loss_reason ?? null),
       notes: form.notes.trim() || null,
       company_maturity: form.company_maturity || null,
+      contract_state_registration: form.contract_state_registration.trim() || null,
+      contract_fiscal_code: form.contract_fiscal_code || null,
+      contract_accounting_code: form.contract_accounting_code || null,
+      contract_labor_code: form.contract_labor_code || null,
+      contract_financial_codes: form.contract_financial_codes,
+      contract_include_address: form.contract_include_address,
       additional_contacts: serializeAdditionalContacts(form.additional_contacts),
       tax_regime: form.tax_regime || null,
       monthly_revenue_managerial: form.monthly_revenue_managerial.trim() || null,
@@ -870,6 +903,126 @@ export const LeadFormDialog = ({
             )}
           </FormSection>
 
+          {isValleContractFunnel && (
+            <FormSection
+              title="Dados para contrato"
+              description="Esses campos alimentam o resumo copiavel usado pelo assistente de contratos da Valle Consultores."
+            >
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FieldBlock className="md:col-span-2">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-3 rounded-lg border border-border/70 p-4">
+                      <div className="space-y-1">
+                        <Label>1 - Gestao Fiscal</Label>
+                        <p className="text-xs text-muted-foreground">Escolha apenas um item.</p>
+                      </div>
+                      <Select
+                        value={form.contract_fiscal_code || "__none__"}
+                        onValueChange={(value) => patchForm({ contract_fiscal_code: value === "__none__" ? "" : value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o perfil fiscal" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Nao informado</SelectItem>
+                          {VALLE_CONTRACT_FISCAL_OPTIONS.map((option) => (
+                            <SelectItem key={option.code} value={option.code}>
+                              {option.code} - {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-3 rounded-lg border border-border/70 p-4">
+                      <div className="space-y-1">
+                        <Label>2 - Gestao Contabil</Label>
+                        <p className="text-xs text-muted-foreground">Escolha um item.</p>
+                      </div>
+                      <Select
+                        value={form.contract_accounting_code || "__none__"}
+                        onValueChange={(value) => patchForm({ contract_accounting_code: value === "__none__" ? "" : value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o perfil contabil" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Nao informado</SelectItem>
+                          {VALLE_CONTRACT_ACCOUNTING_OPTIONS.map((option) => (
+                            <SelectItem key={option.code} value={option.code}>
+                              {option.code} - {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-3 rounded-lg border border-border/70 p-4">
+                      <div className="space-y-1">
+                        <Label>3 - Gestao Trabalhista</Label>
+                        <p className="text-xs text-muted-foreground">Escolha um item.</p>
+                      </div>
+                      <Select
+                        value={form.contract_labor_code || "__none__"}
+                        onValueChange={(value) => patchForm({ contract_labor_code: value === "__none__" ? "" : value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o perfil trabalhista" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Nao informado</SelectItem>
+                          {VALLE_CONTRACT_LABOR_OPTIONS.map((option) => (
+                            <SelectItem key={option.code} value={option.code}>
+                              {option.code} - {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-3 rounded-lg border border-border/70 p-4">
+                      <div className="space-y-1">
+                        <Label>5 - Endereco Fiscal/Comercial</Label>
+                        <p className="text-xs text-muted-foreground">Opcional.</p>
+                      </div>
+                      <label className="flex items-center gap-3 rounded-md border border-border/60 px-3 py-3">
+                        <Checkbox
+                          checked={form.contract_include_address}
+                          onCheckedChange={(value) => patchForm({ contract_include_address: Boolean(value) })}
+                        />
+                        <span className="text-sm text-foreground">Incluir codigo 5 no contrato</span>
+                      </label>
+                    </div>
+                  </div>
+                </FieldBlock>
+
+                <FieldBlock className="md:col-span-2">
+                  <Label>4 - Gestao Financeira</Label>
+                  <div className="grid grid-cols-1 gap-3 rounded-lg border border-border/70 p-4 md:grid-cols-2">
+                    {VALLE_CONTRACT_FINANCIAL_OPTIONS.map((option) => {
+                      const checked = form.contract_financial_codes.includes(option.code);
+                      return (
+                        <label
+                          key={option.code}
+                          className="flex cursor-pointer items-start gap-3 rounded-md border border-transparent px-2 py-1.5 hover:border-border hover:bg-muted/40"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(value) => toggleContractFinancialCode(option.code, Boolean(value))}
+                          />
+                          <span className="text-sm text-foreground">{option.code} - {option.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    O resumo copiavel exibira automaticamente os codigos selecionados no card do cliente.
+                  </p>
+                </FieldBlock>
+              </div>
+            </FormSection>
+          )}
+
           <FormSection
             title="Informações comerciais"
             description="Acompanhe contato realizado, próximo passo e observações comerciais."
@@ -940,6 +1093,15 @@ export const LeadFormDialog = ({
                   placeholder="00.000.000/0000-00"
                   value={form.cnpj}
                   onChange={(event) => patchForm({ cnpj: formatCnpj(event.target.value) })}
+                />
+              </FieldBlock>
+
+              <FieldBlock>
+                <Label>Inscricao Estadual</Label>
+                <Input
+                  placeholder="Se vazio, o resumo usara ISENTO"
+                  value={form.contract_state_registration}
+                  onChange={(event) => patchForm({ contract_state_registration: event.target.value })}
                 />
               </FieldBlock>
 

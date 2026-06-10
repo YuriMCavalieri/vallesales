@@ -57,6 +57,7 @@ import { parseDateValue } from "@/lib/date";
 import { exportLeadAsExcel, exportLeadAsPdf } from "@/lib/lead-export";
 import { isValleSalesFunnel } from "@/lib/customer-tracking";
 import { COMPANY_MATURITY_LABELS, formatLeadSourceLabel, parseAdditionalContacts, parseLeadSource } from "@/lib/lead-form";
+import { buildValleContractServiceLabels, buildValleContractSummary, hasValleContractSelections } from "@/lib/valle-contract";
 import { toast } from "sonner";
 
 interface Props {
@@ -210,6 +211,7 @@ export const LeadDetailsSheet = ({
 
   const stage = stages.find((item) => item.id === lead.stage_id);
   const funnel = (allFunnelsQuery.data ?? []).find((item) => item.id === lead.funnel_id);
+  const isValleContractFunnel = isValleSalesFunnel(funnel?.name) || hasValleContractSelections(lead);
   const isArchived = lead.is_archived;
   const isWon = !!stage?.is_won;
   const isLost = !!stage?.is_lost;
@@ -230,6 +232,8 @@ export const LeadDetailsSheet = ({
   const ownerName = owner?.full_name || owner?.email || null;
   const lossReason = lead.loss_reason?.trim();
   const trackingCode = lead.entity_kind === "customer_tracking" ? lead.tracking_code?.trim() ?? "" : "";
+  const valleContractSummary = isValleContractFunnel ? buildValleContractSummary(lead) : "";
+  const valleContractServiceLabels = isValleContractFunnel ? buildValleContractServiceLabels(lead) : [];
   const assignableIds = new Set(assignableProfiles.map((profile) => profile.id));
   const ownerOptions = profiles.filter(
     (profile) => assignableIds.has(profile.id) || profile.id === lead.owner_id,
@@ -254,7 +258,8 @@ export const LeadDetailsSheet = ({
   };
 
   const handleDelete = async () => {
-    if (!confirm("Excluir este lead permanentemente?")) return;
+    const targetLabel = lead.entity_kind === "customer_tracking" ? "cliente" : "lead";
+    if (!confirm(`Excluir este ${targetLabel} permanentemente?`)) return;
     await del.mutateAsync(lead);
     onOpenChange(false);
   };
@@ -320,6 +325,17 @@ export const LeadDetailsSheet = ({
       toast.success("Codigo de acompanhamento copiado.");
     } catch {
       toast.error("Nao foi possivel copiar o codigo agora.");
+    }
+  };
+
+  const handleCopyValleContractSummary = async () => {
+    if (!valleContractSummary) return;
+
+    try {
+      await navigator.clipboard.writeText(valleContractSummary);
+      toast.success("Dados do contrato copiados.");
+    } catch {
+      toast.error("Nao foi possivel copiar os dados do contrato agora.");
     }
   };
 
@@ -553,6 +569,7 @@ export const LeadDetailsSheet = ({
               />
             )}
             {lead.cnpj && <Info label="CNPJ" value={lead.cnpj} />}
+            {lead.contract_state_registration && <Info label="Inscricao Estadual" value={lead.contract_state_registration} />}
             {lead.employee_count && <Info label="Funcionarios" value={lead.employee_count} />}
             {sourceState.source && <Info label="Origem" value={formatLeadSourceLabel(sourceState.source)} />}
             {sourceState.indication_by && <Info label="Indicação por" value={sourceState.indication_by} />}
@@ -568,6 +585,46 @@ export const LeadDetailsSheet = ({
             )}
             {lead.tax_regime && <Info label="Regime tributario" value={lead.tax_regime} />}
           </div>
+
+          {isValleContractFunnel && (
+            <Card className="space-y-3 border-accent/25 bg-accent/5 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">Dados variaveis para contrato</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Bloco pronto para copiar e colar no assistente de contratos da Valle Consultores.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={handleCopyValleContractSummary}
+                >
+                  <Copy className="mr-2 h-3.5 w-3.5" />
+                  Copiar dados
+                </Button>
+              </div>
+
+              {valleContractServiceLabels.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {valleContractServiceLabels.map((service) => (
+                    <Badge key={service.code} variant="outline" className="border-accent/30 bg-background/70">
+                      {service.code} - {service.label}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              <Textarea
+                value={valleContractSummary}
+                readOnly
+                rows={6}
+                className="min-h-[9.5rem] resize-none bg-background/80"
+              />
+            </Card>
+          )}
 
           {isReferralProgramLead && (
             <Card className="space-y-3 border-accent/25 bg-accent/5 p-4">
