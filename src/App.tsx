@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ActiveFunnelProvider } from "@/hooks/useActiveFunnel";
 import { UiScaleProvider } from "@/hooks/useUiScale";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ClientPortalRoute } from "@/components/ClientPortalRoute";
 import Index from "./pages/Index.tsx";
 import Contacts from "./pages/Contatos.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
@@ -16,6 +17,9 @@ import AcompanhamentoClientes from "./pages/AcompanhamentoClientes.tsx";
 import Configuracoes from "./pages/Configuracoes.tsx";
 import AguardandoAprovacao from "./pages/AguardandoAprovacao.tsx";
 import Auth from "./pages/Auth.tsx";
+import ClientPortalHome from "./pages/ClientPortalHome.tsx";
+import ClientPortalTracking from "./pages/ClientPortalTracking.tsx";
+import ClientPortalReferrals from "./pages/ClientPortalReferrals.tsx";
 import PublicLeadForm from "./pages/PublicLeadForm.tsx";
 import PublicCwkForm from "./pages/PublicCwkForm.tsx";
 import ReferralProgram from "./pages/ReferralProgram.tsx";
@@ -56,6 +60,7 @@ const App = () => (
               <ActiveFunnelProvider>
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/cliente" element={<Auth />} />
                   <Route path="/captacao" element={<PublicLeadForm />} />
                   <Route path="/fale-conosco" element={<PublicLeadForm />} />
                   <Route path="/programa-indicacao" element={<ReferralProgram />} />
@@ -63,6 +68,10 @@ const App = () => (
                   <Route path="/acompanhar" element={<TrackingLookupPage />} />
                   <Route path="/cwk/ficha-cadastral" element={<PublicCwkForm />} />
                   <Route path="/ficha-cwk" element={<PublicCwkForm />} />
+                  <Route path="/cliente" element={<Navigate to="/cliente/auth" replace />} />
+                  <Route path="/cliente/:clientId" element={<ClientPortalRoute><ClientPortalHome /></ClientPortalRoute>} />
+                  <Route path="/cliente/:clientId/acompanhar" element={<ClientPortalRoute><ClientPortalTracking /></ClientPortalRoute>} />
+                  <Route path="/cliente/:clientId/indicacoes" element={<ClientPortalRoute><ClientPortalReferrals /></ClientPortalRoute>} />
                   <Route path="/aguardando-aprovacao" element={<ProtectedRoute><AguardandoAprovacao /></ProtectedRoute>} />
                   <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                   <Route path="/contatos" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />

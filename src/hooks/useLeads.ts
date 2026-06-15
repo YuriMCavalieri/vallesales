@@ -224,6 +224,30 @@ const applyLeadDeletionToCache = (qc: ReturnType<typeof useQueryClient>, leadId:
   qc.removeQueries({ queryKey: ["lead", leadId], exact: true });
 };
 
+const applyLeadCreationToCache = (qc: ReturnType<typeof useQueryClient>, lead: Lead) => {
+  qc.getQueriesData<Lead[]>({ queryKey: ["leads"] }).forEach(([queryKey]) => {
+    const meta = parseLeadListQueryKey(queryKey);
+    if (!meta) return;
+
+    const matchesFunnel = meta.funnelKey === ALL_FUNNELS_KEY || meta.funnelKey === lead.funnel_id;
+    const matchesArchived = meta.archived === "all" || (meta.archived === "active" && !lead.is_archived);
+    const entitySelection = queryKey[3];
+    const matchesEntity =
+      entitySelection === undefined ||
+      entitySelection === "all" ||
+      entitySelection === lead.entity_kind;
+
+    if (!matchesFunnel || !matchesArchived || !matchesEntity) return;
+
+    qc.setQueryData<Lead[] | undefined>(queryKey, (current) => {
+      const items = current ?? [];
+      return insertLeadAtIndex(items, lead, 0);
+    });
+  });
+
+  qc.setQueryData<Lead>(["lead", lead.id], lead);
+};
+
 const cancelPendingLeadUndo = (leadId: string) => {
   const pending = pendingLeadUndos.get(leadId);
   if (!pending) return;
@@ -650,10 +674,12 @@ export const useCreateLead = () => {
       const data = await invokeLeadsApi<{ lead: Lead }>({ action: "create", lead });
       return data.lead;
     },
-    onSuccess: () => {
+    onSuccess: (createdLead) => {
+      applyLeadCreationToCache(qc, createdLead);
       qc.invalidateQueries({ queryKey: ["leads"] });
+      qc.invalidateQueries({ queryKey: ["lead", createdLead.id] });
       qc.invalidateQueries({ queryKey: ["crm_notifications_feed"] });
-      toast.success("Lead criado");
+      toast.success(createdLead.entity_kind === "customer_tracking" ? "Cliente criado" : "Lead criado");
     },
     onError: (e: Error) => toast.error(e.message),
   });

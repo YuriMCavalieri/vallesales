@@ -1,0 +1,109 @@
+import { Link, useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
+
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import type { ClientPortalIdentity } from "@/types/client-portal";
+import valleLogo from "@/assets/valle-logo-full.png";
+
+type ClientPortalShellProps = {
+  clientId: string;
+  client: ClientPortalIdentity | null;
+  activeTab: "home" | "acompanhar" | "indicacoes";
+  title: string;
+  description: string;
+  children: React.ReactNode;
+};
+
+const tabItems = [
+  { key: "home", label: "Inicio", buildHref: (clientId: string) => `/cliente/${clientId}` },
+  { key: "acompanhar", label: "Acompanhar processos", buildHref: (clientId: string) => `/cliente/${clientId}/acompanhar` },
+  { key: "indicacoes", label: "Indicacoes", buildHref: (clientId: string) => `/cliente/${clientId}/indicacoes` },
+] as const;
+
+export const ClientPortalShell = ({
+  clientId,
+  client,
+  activeTab,
+  title,
+  description,
+  children,
+}: ClientPortalShellProps) => {
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/cliente/auth", { replace: true });
+  };
+
+  return (
+    <div className="min-h-screen bg-[linear-gradient(180deg,#2b3c46_0%,#314650_52%,#263740_100%)] text-white">
+      <section className="relative overflow-hidden px-4 py-8 md:px-6 md:py-10">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.09),_transparent_42%)]" />
+        <div className="pointer-events-none absolute -left-16 top-24 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+        <div className="pointer-events-none absolute -right-20 top-10 h-72 w-72 rounded-full bg-accent/15 blur-3xl" />
+
+        <div className="relative mx-auto max-w-6xl space-y-6">
+          <div className="flex flex-col gap-4 rounded-[2rem] border border-white/10 bg-white/8 p-5 shadow-[0_24px_50px_-24px_rgba(0,0,0,0.35)] backdrop-blur md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full border border-white/10 bg-white/10 px-4 py-2">
+                <img src={valleLogo} alt="Valle Consultores" className="h-7 w-auto object-contain" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">Portal do cliente</p>
+                <p className="truncate text-sm text-white/88">{client?.fullName ?? "Cliente Valle"}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {tabItems.map((tab) => (
+                <Button
+                  key={tab.key}
+                  asChild
+                  variant={activeTab === tab.key ? "accent" : "outline"}
+                  className={cn(
+                    "border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white",
+                    activeTab === tab.key && "border-transparent",
+                  )}
+                >
+                  <Link to={tab.buildHref(clientId)}>{tab.label}</Link>
+                </Button>
+              ))}
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-white hover:bg-white/10 hover:text-white"
+                onClick={() => void handleSignOut()}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sair
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="space-y-4">
+              <h1 className="max-w-[14ch] text-[clamp(2.4rem,6vw,3.8rem)] font-bold leading-[0.96] tracking-[-0.04em] text-white">
+                {title}
+              </h1>
+              <p className="max-w-2xl text-base leading-7 text-white/76 sm:text-lg">
+                {description}
+              </p>
+            </div>
+
+            <Card className="border-white/10 bg-white/8 p-5 text-white shadow-none backdrop-blur">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/65">Conta conectada</p>
+              <p className="mt-3 text-lg font-semibold text-white">{client?.fullName ?? "Cliente Valle"}</p>
+              <p className="mt-1 text-sm text-white/68">{client?.email ?? "Sem e-mail principal"}</p>
+            </Card>
+          </div>
+
+          {children}
+        </div>
+      </section>
+    </div>
+  );
+};

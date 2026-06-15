@@ -37,6 +37,7 @@ interface Props {
   highlightedLeadId?: string | null;
   onSelectLead: (lead: Lead) => void;
   onAddInStage: (stageId: string) => void;
+  addEntityLabel?: string;
   canAddLead: boolean;
   canMoveLead: (lead: Lead) => boolean;
   canRenameStages: boolean;
@@ -73,6 +74,7 @@ export const KanbanBoard = ({
   highlightedLeadId = null,
   onSelectLead,
   onAddInStage,
+  addEntityLabel = "lead",
   canAddLead,
   canMoveLead,
   canRenameStages,
@@ -437,7 +439,7 @@ export const KanbanBoard = ({
             : "pointer-events-none px-3 py-0 opacity-0",
         )}
       >
-        + Adicionar lead
+        {`+ Adicionar ${addEntityLabel}`}
       </button>
     </div>
   );
@@ -549,8 +551,8 @@ export const KanbanBoard = ({
                               size="icon"
                               className="h-7 w-7 shrink-0 text-muted-foreground/80 hover:bg-accent/10 hover:text-accent"
                               onClick={() => onAddInStage(stage.id)}
-                              aria-label={`Adicionar lead na fase ${stage.name}`}
-                              title="Adicionar lead"
+                              aria-label={`Adicionar ${addEntityLabel} na fase ${stage.name}`}
+                              title={`Adicionar ${addEntityLabel}`}
                             >
                               <Plus className="h-3.5 w-3.5" />
                             </Button>
@@ -677,7 +679,7 @@ export const KanbanBoard = ({
                         onClick={() => onAddInStage(stage.id)}
                         className="w-full rounded-lg border border-dashed border-border/60 px-3 py-8 text-center text-xs text-muted-foreground transition-all hover:border-accent/50 hover:bg-accent/5 hover:text-accent"
                       >
-                        + Adicionar lead
+                        {`+ Adicionar ${addEntityLabel}`}
                       </button>
                     )}
                   </div>

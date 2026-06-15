@@ -13,3 +13,6 @@ verify_jwt = false
 
 [functions.public-referral-program]
 verify_jwt = false
+
+[functions.client-portal-api]
+verify_jwt = false

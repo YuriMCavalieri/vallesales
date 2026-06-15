@@ -8,6 +8,7 @@ import {
   ROLE_LABELS,
   ROLE_OPTIONS,
   STATUS_LABELS,
+  isClientRole,
   isOperationalRole,
   isOwnerEmail,
 } from "@/lib/access";
@@ -69,14 +70,17 @@ export const usePermissions = () => {
   const status = (profile?.access_status ?? "pending") as UserAccessStatus;
 
   const has = (role: OperationalRole) => roles.includes(role);
+  const hasClientRole = roles.some((role) => isClientRole(role));
   const isAdmin = has("admin");
   const isGestor = has("gestor");
   const isConsultor = has("consultor");
   const isVisualizador = has("visualizador");
   const isOwner = isOwnerEmail(profile?.email);
   const hasOperationalRole = primaryRole !== null;
-  const isActive = status === "active" && profile?.is_active !== false && hasOperationalRole;
-  const isPending = status === "pending" || !hasOperationalRole;
+  const hasAnyPortalRole = hasOperationalRole || hasClientRole;
+  const isProfileActive = status === "active" && profile?.is_active !== false;
+  const isActive = isProfileActive && hasOperationalRole;
+  const isPending = status === "pending" || !hasAnyPortalRole;
   const isSuspended = status === "suspended";
   const isInactive = status === "inactive";
 
@@ -91,13 +95,16 @@ export const usePermissions = () => {
     isGestor,
     isConsultor,
     isVisualizador,
+    isClient: hasClientRole,
     isOwner,
     isPending,
     isSuspended,
     isInactive,
     isActive,
     hasOperationalRole,
+    hasClientRole,
     canAccessApp: isActive,
+    canAccessClientPortal: isProfileActive && hasClientRole,
     canManageTeam: isActive && (isAdmin || isGestor),
     canCreateLead: isActive && (isAdmin || isGestor || isConsultor),
     canEditAnyLead: isActive && (isAdmin || isGestor),

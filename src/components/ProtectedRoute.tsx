@@ -20,6 +20,10 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!user) return <Navigate to="/auth" replace />;
 
+  if (perms.canAccessClientPortal && !perms.canAccessApp) {
+    return <Navigate to={`/cliente/${user.id}`} replace />;
+  }
+
   if (!perms.canAccessApp) {
     if (location.pathname === WAITING_ROUTE) return <>{children}</>;
     return <Navigate to={WAITING_ROUTE} replace />;

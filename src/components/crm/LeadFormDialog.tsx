@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { addLeadNoteEntry, useArchiveLead, useAssignableProfiles, useCreateLead, useProfiles, useStages, useUpdateLead, uploadLeadAttachmentFile } from "@/hooks/useLeads";
 import { useActiveFunnel } from "@/hooks/useActiveFunnel";
 import { useAuth } from "@/hooks/useAuth";
-import { Lead } from "@/types/crm";
+import type { Funnel, Lead } from "@/types/crm";
 import type { TrackingFlowKey } from "@/types/crm";
 import { CONTACT_METHOD_OPTIONS, SOURCE_OPTIONS, TEMPERATURE_OPTIONS, UF_OPTIONS } from "@/lib/constants";
 import {
@@ -45,7 +45,11 @@ interface Props {
   onOpenChange: (o: boolean) => void;
   lead?: Lead | null;
   defaultStageId?: string;
+  funnelOptions?: Funnel[];
+  lockedFunnelId?: string | null;
+  wonDialogTitle?: string;
   wonDialogDescription?: string;
+  wonDialogKeepLabel?: string;
   showWonArchiveAction?: boolean;
   showWonCancelAction?: boolean;
   getWonLeadTransferActions?: (lead: Lead | null | undefined) => Array<{ flow: TrackingFlowKey; label: string }>;
@@ -135,14 +139,14 @@ const normalizeSegmentState = (lead: Lead | null | undefined) => {
 const buildInitialForm = (
   lead: Lead | null | undefined,
   defaultStageId: string | undefined,
-  activeFunnelId?: string | null,
+  preferredFunnelId?: string | null,
   firstStageId?: string,
 ): FormState => {
   const segmentState = normalizeSegmentState(lead);
   const sourceState = parseLeadSource(lead?.source);
 
   return {
-    funnel_id: lead?.funnel_id ?? activeFunnelId ?? "",
+    funnel_id: lead?.funnel_id ?? preferredFunnelId ?? "",
     company_or_person: lead?.company_or_person ?? "",
     contact_name: lead?.contact_name ?? "",
     phone: lead?.phone ?? "",
@@ -199,16 +203,22 @@ export const LeadFormDialog = ({
   onOpenChange,
   lead,
   defaultStageId,
+  funnelOptions,
+  lockedFunnelId,
+  wonDialogTitle = "Cliente fechado",
   wonDialogDescription = "Este cliente pode ser arquivado agora ou permanecer no funil ate que voce decida arquivar manualmente. O historico continuara salvo e o contato permanecera na aba Contatos.",
+  wonDialogKeepLabel = "Manter no funil",
   showWonArchiveAction = true,
   showWonCancelAction = true,
   getWonLeadTransferActions,
   onWonLeadTransfer,
 }: Props) => {
   const qc = useQueryClient();
-  const { activeFunnelId, funnels } = useActiveFunnel();
+  const { activeFunnelId, funnels: activeFunnels } = useActiveFunnel();
+  const availableFunnels = funnelOptions ?? activeFunnels;
+  const preferredFunnelId = lockedFunnelId ?? activeFunnelId;
   const { data: profiles = [] } = useProfiles();
-  const [form, setForm] = useState<FormState>(() => buildInitialForm(lead, defaultStageId, activeFunnelId));
+  const [form, setForm] = useState<FormState>(() => buildInitialForm(lead, defaultStageId, preferredFunnelId));
   const { data: stages = [] } = useStages(form.funnel_id || undefined, !!form.funnel_id);
   const { data: assignableProfiles = [] } = useAssignableProfiles(form.funnel_id || undefined, !!form.funnel_id);
   const { user } = useAuth();
@@ -225,14 +235,14 @@ export const LeadFormDialog = ({
 
   useEffect(() => {
     if (!open) return;
-    setForm(buildInitialForm(lead, defaultStageId, activeFunnelId));
+    setForm(buildInitialForm(lead, defaultStageId, preferredFunnelId));
     setErrors({});
     setPendingAttachments([]);
     setLossReasonDialogOpen(false);
     setWonArchiveDialogOpen(false);
     setLossReason("");
     setTimeout(() => firstFieldRef.current?.focus(), 50);
-  }, [activeFunnelId, defaultStageId, lead, open]);
+  }, [defaultStageId, lead, open, preferredFunnelId]);
 
   useEffect(() => {
     if (!open || !form.funnel_id || stages.length === 0) return;
@@ -250,13 +260,16 @@ export const LeadFormDialog = ({
     (profile) => assignableIds.has(profile.id) || profile.id === form.owner_id,
   );
   const selectedFunnel = useMemo(
-    () => funnels.find((funnel) => funnel.id === form.funnel_id) ?? null,
-    [form.funnel_id, funnels],
+    () => availableFunnels.find((funnel) => funnel.id === form.funnel_id) ?? null,
+    [availableFunnels, form.funnel_id],
   );
   const selectedStage = useMemo(
     () => stages.find((stage) => stage.id === form.stage_id) ?? null,
     [form.stage_id, stages],
   );
+  const isTrackingContext = lead?.entity_kind === "customer_tracking" || selectedFunnel?.module === "customer_tracking";
+  const entityLabel = isTrackingContext ? "cliente" : "lead";
+  const entityLabelCapitalized = isTrackingContext ? "Cliente" : "Lead";
   const isValleContractFunnel = isValleSalesFunnel(selectedFunnel?.name);
   const canManuallyArchiveCurrentLead = Boolean(
     lead &&
@@ -513,7 +526,9 @@ export const LeadFormDialog = ({
     if (!lead) return;
 
     const shouldArchive = window.confirm(
-      "Deseja arquivar este negócio? Ele sairá do funil principal, mas continuará salvo no histórico e o contato permanecerá na aba Contatos.",
+      isTrackingContext
+        ? "Deseja arquivar este cliente em acompanhamento? Ele sairá do fluxo ativo, mas continuará salvo no histórico."
+        : "Deseja arquivar este negócio? Ele sairá do funil principal, mas continuará salvo no histórico e o contato permanecerá na aba Contatos.",
     );
 
     if (!shouldArchive) return;
@@ -529,16 +544,22 @@ export const LeadFormDialog = ({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Editar lead" : "Novo lead"}</DialogTitle>
+          <DialogTitle>{isEdit ? `Editar ${entityLabel}` : `Novo ${entityLabel}`}</DialogTitle>
           <DialogDescription>
-            Preencha os dados do lead, organize os contatos e registre as informações comerciais em um único formulário.
+            {isTrackingContext
+              ? "Preencha os dados do cliente, organize os contatos e registre o andamento operacional em um único formulário."
+              : "Preencha os dados do lead, organize os contatos e registre as informações comerciais em um único formulário."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={submit} className="space-y-5">
           <FormSection
-            title="Dados do lead / empresa"
-            description="Informações principais da empresa, etapa atual e origem do lead."
+            title={`Dados do ${entityLabel} / empresa`}
+            description={
+              isTrackingContext
+                ? "Informações principais da empresa, etapa atual e origem do cliente."
+                : "Informações principais da empresa, etapa atual e origem do lead."
+            }
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FieldBlock className="md:col-span-2" error={errors.company_or_person}>
@@ -558,30 +579,34 @@ export const LeadFormDialog = ({
               </FieldBlock>
 
               <FieldBlock error={errors.funnel_id}>
-                <Label>Negócio / funil *</Label>
-                <Select
-                  value={form.funnel_id}
-                  onValueChange={(value) => {
-                    patchForm({ funnel_id: value, owner_id: "" });
-                    clearError("funnel_id");
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {funnels.map((funnel) => (
-                      <SelectItem key={funnel.id} value={funnel.id}>
-                        {funnel.name}
-                        {funnel.is_default ? " (principal)" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>{isTrackingContext ? "Fluxo de acompanhamento *" : "Negócio / funil *"}</Label>
+                {lockedFunnelId ? (
+                  <Input value={selectedFunnel?.name ?? "Fluxo atual"} readOnly />
+                ) : (
+                  <Select
+                    value={form.funnel_id}
+                    onValueChange={(value) => {
+                      patchForm({ funnel_id: value, owner_id: "" });
+                      clearError("funnel_id");
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableFunnels.map((funnel) => (
+                        <SelectItem key={funnel.id} value={funnel.id}>
+                          {funnel.name}
+                          {funnel.is_default ? " (principal)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </FieldBlock>
 
               <FieldBlock error={errors.stage_id}>
-                <Label>Etapa do funil *</Label>
+                <Label>{isTrackingContext ? "Etapa do acompanhamento *" : "Etapa do funil *"}</Label>
                 <Select
                   value={form.stage_id}
                   onValueChange={(value) => {
@@ -1316,7 +1341,7 @@ export const LeadFormDialog = ({
                 disabled={loading}
               >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Arquivar manualmente
+                {isTrackingContext ? "Arquivar cliente" : "Arquivar manualmente"}
               </Button>
             )}
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
@@ -1324,7 +1349,7 @@ export const LeadFormDialog = ({
             </Button>
             <Button type="submit" variant="accent" disabled={loading} className="font-semibold">
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEdit ? "Salvar alterações" : "Criar lead"}
+              {isEdit ? "Salvar alterações" : `Criar ${entityLabel}`}
             </Button>
           </DialogFooter>
           </form>
@@ -1344,7 +1369,7 @@ export const LeadFormDialog = ({
           <DialogHeader>
             <DialogTitle>Marcar como perdido</DialogTitle>
             <DialogDescription>
-              O lead será movido para perdido. Escolha se deseja arquivar agora ou manter no funil para arquivar manualmente depois.
+              {entityLabelCapitalized} será movido para perdido. Escolha se deseja arquivar agora ou manter no funil para arquivar manualmente depois.
             </DialogDescription>
           </DialogHeader>
 
@@ -1405,7 +1430,7 @@ export const LeadFormDialog = ({
       >
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Cliente fechado</DialogTitle>
+            <DialogTitle>{wonDialogTitle}</DialogTitle>
             <DialogDescription>{wonDialogDescription}</DialogDescription>
           </DialogHeader>
 
@@ -1417,7 +1442,7 @@ export const LeadFormDialog = ({
             )}
             <Button type="button" variant="outline" onClick={() => void saveLead()} disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Manter no funil
+              {wonDialogKeepLabel}
             </Button>
             {showWonArchiveAction && (
               <Button type="button" variant="accent" className="h-auto whitespace-normal text-left" onClick={() => void saveLead({ archiveAfterSave: true })} disabled={loading}>

@@ -25,8 +25,10 @@ import {
   useUploadAttachment,
   downloadAttachment,
 } from "@/hooks/useLeads";
+import { useClientPortalLink, useClientPortalUsers, useSetClientPortalLink } from "@/hooks/useClientPortal";
 import { useAuth } from "@/hooks/useAuth";
 import { useFunnelAccessOptions } from "@/hooks/useFunnels";
+import { usePermissions } from "@/hooks/useUserRoles";
 import type { Lead, PipelineStage, Profile, TrackingFlowKey } from "@/types/crm";
 import { CONTACT_METHOD_OPTIONS, formatCurrency, formatDate, formatDateTime } from "@/lib/constants";
 import {
@@ -183,6 +185,11 @@ export const LeadDetailsSheet = ({
   const { data: assignableProfiles = [] } = useAssignableProfiles(lead?.funnel_id, !!lead?.funnel_id);
   const allFunnelsQuery = useFunnelAccessOptions(open, { module: "all" });
   const { user } = useAuth();
+  const perms = usePermissions();
+  const canManageClientPortalLink = perms.canManageTeam && lead?.entity_kind === "customer_tracking";
+  const clientPortalUsers = useClientPortalUsers(open && canManageClientPortalLink);
+  const clientPortalLink = useClientPortalLink(lead?.id ?? null, open && canManageClientPortalLink);
+  const setClientPortalLink = useSetClientPortalLink();
 
   useEffect(() => {
     setSelectedOwnerId(lead?.owner_id || "__none__");
@@ -217,7 +224,9 @@ export const LeadDetailsSheet = ({
   const isLost = !!stage?.is_lost;
   const isValleClosedSalesLead = lead.entity_kind === "lead" && isWon && isValleSalesFunnel(funnel?.name);
   const trackingTransferActions = getTrackingTransferActions?.(lead) ?? [];
+  const canTransferTrackingLead = lead.entity_kind === "customer_tracking" && !isArchived && canEditLead && !!onTrackingTransfer && trackingTransferActions.length > 0;
   const canSendToTrackingFlow = isValleClosedSalesLead && !isArchived && canEditLead && !!onTrackingTransfer && trackingTransferActions.length > 0;
+  const canShowTrackingActions = canSendToTrackingFlow || canTransferTrackingLead;
   const canArchiveLead = !isArchived && !!archiveLead && canEditLead && (
     lead.entity_kind === "customer_tracking" ||
     isLost ||
@@ -238,6 +247,7 @@ export const LeadDetailsSheet = ({
   const ownerOptions = profiles.filter(
     (profile) => assignableIds.has(profile.id) || profile.id === lead.owner_id,
   );
+  const selectedClientUserId = clientPortalLink.data?.client_user?.id ?? "__none__";
 
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
@@ -336,6 +346,19 @@ export const LeadDetailsSheet = ({
       toast.success("Dados do contrato copiados.");
     } catch {
       toast.error("Nao foi possivel copiar os dados do contrato agora.");
+    }
+  };
+
+  const handleClientPortalLinkChange = async (value: string) => {
+    if (!lead) return;
+
+    try {
+      await setClientPortalLink.mutateAsync({
+        leadId: lead.id,
+        clientUserId: value === "__none__" ? null : value,
+      });
+    } catch {
+      // Errors are already surfaced by the mutation toast handler.
     }
   };
 
@@ -529,6 +552,61 @@ export const LeadDetailsSheet = ({
               </div>
             )}
 
+            {canManageClientPortalLink && (
+              <Card className="col-span-2 space-y-3 border-accent/25 bg-accent/5 p-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">Portal do cliente</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Vincule este cliente em acompanhamento a um usuario com role cliente para liberar o acesso em /cliente.
+                  </p>
+                </div>
+
+                {clientPortalLink.isLoading || clientPortalUsers.isLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Carregando usuarios do portal...
+                  </div>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.65fr)]">
+                    <div className="space-y-2">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Usuario cliente vinculado</p>
+                      <Select
+                        value={selectedClientUserId}
+                        onValueChange={(value) => void handleClientPortalLinkChange(value)}
+                        disabled={setClientPortalLink.isPending}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Selecione um usuario cliente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Sem usuario vinculado</SelectItem>
+                          {(clientPortalUsers.data ?? []).map((portalUser) => (
+                            <SelectItem key={portalUser.id} value={portalUser.id}>
+                              {portalUser.full_name || portalUser.email || "Cliente sem nome"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-sm">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Status do vinculo</p>
+                      <p className="mt-1 font-medium text-foreground">
+                        {clientPortalLink.data?.client_user
+                          ? clientPortalLink.data.client_user.full_name || clientPortalLink.data.client_user.email || "Usuario cliente"
+                          : "Sem acesso liberado"}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {clientPortalLink.data?.client_user?.access_status === "active"
+                          ? "Portal pronto para login"
+                          : "Aguardando vinculacao"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            )}
+
             <div className="col-span-2 space-y-1">
               <p className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-muted-foreground">
                 <UserIcon className="h-3.5 w-3.5" />
@@ -666,12 +744,16 @@ export const LeadDetailsSheet = ({
             </Card>
           )}
 
-          {canSendToTrackingFlow && (
+          {canShowTrackingActions && (
             <Card className="space-y-3 border-accent/25 bg-accent/5 p-4">
               <div>
-                <h4 className="text-sm font-semibold text-foreground">Enviar para acompanhamento</h4>
+                <h4 className="text-sm font-semibold text-foreground">
+                  {canTransferTrackingLead ? "Transferir fluxo de acompanhamento" : "Enviar para acompanhamento"}
+                </h4>
                 <p className="text-xs text-muted-foreground">
-                  Este cliente foi mantido no funil comercial. Quando quiser, voce pode envia-lo para o fluxo operacional adequado.
+                  {canTransferTrackingLead
+                    ? "Se precisar, voce pode mover este cliente entre os fluxos de abertura de empresa e ja possui CNPJ."
+                    : "Este cliente foi mantido no funil comercial. Quando quiser, voce pode envia-lo para o fluxo operacional adequado."}
                 </p>
               </div>
               <div className="flex flex-col gap-2 md:flex-row">

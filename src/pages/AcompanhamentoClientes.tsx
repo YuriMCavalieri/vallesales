@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Briefcase, AlertTriangle } from "lucide-react";
+import { Loader2, Briefcase, AlertTriangle, Plus } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
 import { LeadDetailsSheet } from "@/components/crm/LeadDetailsSheet";
+import { LeadFormDialog } from "@/components/crm/LeadFormDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useFunnelAccessOptions } from "@/hooks/useFunnels";
-import { useArchiveLead, useDeleteLead, useLeads, useProfiles, useStages } from "@/hooks/useLeads";
+import { useArchiveLead, useDeleteLead, useLeads, useProfiles, useStages, useTransferCustomerTrackingFlow } from "@/hooks/useLeads";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/useUserRoles";
-import type { Funnel, Lead } from "@/types/crm";
+import type { Funnel, Lead, TrackingFlowKey } from "@/types/crm";
 import {
   CUSTOMER_TRACKING_STORAGE_KEY,
   TRACKING_FLOW_LABELS,
@@ -23,7 +24,12 @@ const AcompanhamentoClientes = () => {
   const profiles = useProfiles(!!user);
   const archiveLead = useArchiveLead();
   const deleteLead = useDeleteLead();
+  const transferTrackingFlow = useTransferCustomerTrackingFlow();
   const [activeTrackingFunnelId, setActiveTrackingFunnelId] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editLead, setEditLead] = useState<Lead | null>(null);
+  const [defaultStage, setDefaultStage] = useState<string | undefined>();
+  const [formSessionKey, setFormSessionKey] = useState(0);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -81,6 +87,20 @@ const AcompanhamentoClientes = () => {
     setDetailsOpen(true);
   };
 
+  const openNew = (stageId?: string) => {
+    setEditLead(null);
+    setDefaultStage(stageId);
+    setFormSessionKey((current) => current + 1);
+    setFormOpen(true);
+  };
+
+  const openEdit = (lead: Lead) => {
+    setEditLead(lead);
+    setDefaultStage(undefined);
+    setFormSessionKey((current) => current + 1);
+    setFormOpen(true);
+  };
+
   const handleSelectFunnel = (funnel: Funnel) => {
     setActiveTrackingFunnelId(funnel.id);
     if (typeof window !== "undefined") {
@@ -120,6 +140,34 @@ const AcompanhamentoClientes = () => {
     }
   };
 
+  const getTrackingTransferActions = (lead: Lead) => {
+    if (lead.entity_kind !== "customer_tracking") return [];
+
+    const actions: Array<{ flow: TrackingFlowKey; label: string }> = [];
+
+    if (lead.tracking_flow_key !== "opening_company") {
+      actions.push({ flow: "opening_company", label: "Mover para fluxo de abertura de empresa" });
+    }
+
+    if (lead.tracking_flow_key !== "existing_company") {
+      actions.push({ flow: "existing_company", label: "Mover para fluxo de Ja possui CNPJ" });
+    }
+
+    return actions;
+  };
+
+  const handleTransferTrackingLead = async (lead: Lead, targetFlow: TrackingFlowKey) => {
+    await transferTrackingFlow.mutateAsync({
+      leadId: lead.id,
+      targetFlow,
+    });
+
+    if (selectedLead?.id === lead.id) {
+      setDetailsOpen(false);
+      setSelectedLead(null);
+    }
+  };
+
   const loading = trackingFunnelsQuery.isLoading || stages.isLoading || leads.isLoading || profiles.isLoading;
   const flowKey = activeTrackingFunnel?.tracking_flow_key;
   const flowLabel = flowKey ? TRACKING_FLOW_LABELS[flowKey] : "Acompanhamento";
@@ -150,6 +198,12 @@ const AcompanhamentoClientes = () => {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            {perms.canCreateLead && activeTrackingFunnelId && (
+              <Button type="button" variant="accent" className="rounded-full" onClick={() => openNew()}>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo cliente
+              </Button>
+            )}
             {accessibleFunnels.map((funnel) => {
               const selected = funnel.id === activeTrackingFunnelId;
               const label = funnel.tracking_flow_key ? TRACKING_FLOW_LABELS[funnel.tracking_flow_key] : funnel.name;
@@ -223,8 +277,9 @@ const AcompanhamentoClientes = () => {
               leads={leads.data ?? []}
               profiles={profiles.data ?? []}
               onSelectLead={openDetails}
-              onAddInStage={() => undefined}
-              canAddLead={false}
+              onAddInStage={openNew}
+              addEntityLabel="cliente"
+              canAddLead={perms.canCreateLead}
               canMoveLead={canEditLead}
               canRenameStages={false}
               canCreateStages={false}
@@ -235,7 +290,7 @@ const AcompanhamentoClientes = () => {
                   ? "Ao concluir a abertura de empresa, o cliente sera enviado automaticamente para o fluxo de implantacao do atendimento contabil."
                   : "Conclua este fluxo quando o onboarding contabil ja tiver sido finalizado."
               }
-              wonDialogKeepLabel={flowKey === "opening_company" ? "Concluir e seguir" : "Concluir fluxo"}
+              wonDialogKeepLabel={flowKey === "opening_company" ? "Ir para Onboarding" : "Concluir fluxo"}
               showWonArchiveAction
               onArchiveLead={handleArchiveTrackingLead}
               onDeleteLead={perms.canDeleteLead ? handleDeleteTrackingLead : undefined}
@@ -243,6 +298,24 @@ const AcompanhamentoClientes = () => {
           </div>
         )}
       </main>
+
+      <LeadFormDialog
+        key={formSessionKey}
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        lead={editLead}
+        defaultStageId={defaultStage}
+        funnelOptions={accessibleFunnels}
+        lockedFunnelId={activeTrackingFunnelId}
+        wonDialogTitle={flowKey === "opening_company" ? "Abertura concluida" : "Fluxo concluido"}
+        wonDialogDescription={
+          flowKey === "opening_company"
+            ? "Ao concluir a abertura de empresa, o cliente sera enviado automaticamente para o fluxo de implantacao do atendimento contabil."
+            : "Conclua este fluxo quando o onboarding contabil ja tiver sido finalizado."
+        }
+        wonDialogKeepLabel={flowKey === "opening_company" ? "Ir para Onboarding" : "Concluir fluxo"}
+        showWonArchiveAction
+      />
 
       <LeadDetailsSheet
         lead={selectedLead}
@@ -253,6 +326,14 @@ const AcompanhamentoClientes = () => {
         stages={stages.data ?? []}
         canEditLead={selectedLead ? canEditLead(selectedLead) : false}
         canDeleteLead={perms.canDeleteLead}
+        onEdit={() => {
+          if (selectedLead) {
+            setDetailsOpen(false);
+            openEdit(selectedLead);
+          }
+        }}
+        getTrackingTransferActions={getTrackingTransferActions}
+        onTrackingTransfer={handleTransferTrackingLead}
         archiveLead={selectedLead ? async () => {
           await handleArchiveTrackingLead(selectedLead);
         } : undefined}

@@ -3,7 +3,7 @@ import type { Database } from "@/integrations/supabase/types";
 export const OWNER_EMAIL = "marketing@valleconsultores.com.br";
 
 export type AppRole = Database["public"]["Enums"]["app_role"];
-export type OperationalRole = Exclude<AppRole, "user">;
+export type OperationalRole = Exclude<AppRole, "user" | "cliente">;
 export type UserAccessStatus = Database["public"]["Enums"]["user_access_status"];
 
 export const ROLE_LABELS: Record<OperationalRole, string> = {
@@ -43,3 +43,5 @@ export const isOwnerEmail = (email?: string | null) => normalizeEmail(email) ===
 
 export const isOperationalRole = (role?: AppRole | null): role is OperationalRole =>
   role === "admin" || role === "gestor" || role === "consultor" || role === "visualizador";
+
+export const isClientRole = (role?: AppRole | null): role is "cliente" => role === "cliente";

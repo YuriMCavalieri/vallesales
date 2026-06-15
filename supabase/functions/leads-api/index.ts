@@ -756,11 +756,185 @@ serve(async (req) => {
       return json({ lead: normalizeLead(hydratedLead) });
     }
 
+    if (action === "list_client_users") {
+      if (!flags.canManageAll) return fail("Sem permissao para gerenciar o portal do cliente.", 403);
+
+      const users = await sql`
+        select
+          p.id::text as id,
+          p.full_name,
+          p.email,
+          p.access_status::text as access_status,
+          p.is_active
+        from public.profiles p
+        where exists (
+          select 1
+          from public.user_roles ur
+          where ur.user_id = p.id
+            and ur.role = 'cliente'
+        )
+        or not exists (
+          select 1
+          from public.user_roles ur
+          where ur.user_id = p.id
+            and ur.role in ('admin', 'gestor', 'consultor', 'visualizador')
+        )
+        order by coalesce(nullif(trim(p.full_name), ''), p.email) asc
+      `;
+
+      return json({ users });
+    }
+
+    if (action === "get_client_portal_link") {
+      if (!flags.canManageAll) return fail("Sem permissao para gerenciar o portal do cliente.", 403);
+
+      const id = body.id as string | undefined;
+      if (!id) return fail("Cliente nao informado.");
+
+      const [lead] = await sql`select * from public.leads where id = ${id} limit 1`;
+      if (!lead) return fail("Cliente nao encontrado.", 404);
+      if (!canAccessLead(lead, session)) return fail("Sem permissao para acessar este cliente.", 403);
+      if ((lead.entity_kind ?? "lead") !== "customer_tracking") {
+        return fail("Somente clientes em acompanhamento podem ser vinculados ao portal.", 400);
+      }
+
+      const [project] = await sql`
+        select
+          project.id::text as project_id,
+          project.client_portal_user_id::text as client_portal_user_id,
+          profile.full_name,
+          profile.email,
+          profile.access_status::text as access_status,
+          profile.is_active
+        from public.project_tracking_projects project
+        left join public.profiles profile
+          on profile.id = project.client_portal_user_id
+        where project.current_tracking_lead_id = ${id}
+        limit 1
+      `;
+
+      return json({
+        project_id: (project?.project_id as string | null) ?? null,
+        client_user: project?.client_portal_user_id
+          ? {
+            id: project.client_portal_user_id,
+            full_name: (project.full_name as string | null) ?? null,
+            email: (project.email as string | null) ?? null,
+            access_status: (project.access_status as string | null) ?? null,
+            is_active: project.is_active === true,
+          }
+          : null,
+      });
+    }
+
+    if (action === "set_client_portal_link") {
+      if (!flags.canManageAll) return fail("Sem permissao para gerenciar o portal do cliente.", 403);
+
+      const id = body.id as string | undefined;
+      const clientUserId = normalizeOptionalString(body.client_user_id);
+      if (!id) return fail("Cliente nao informado.");
+
+      const [lead] = await sql`select * from public.leads where id = ${id} limit 1`;
+      if (!lead) return fail("Cliente nao encontrado.", 404);
+      if (!canEditLeadRecord(lead, session)) return fail("Sem permissao para alterar este cliente.", 403);
+      if ((lead.entity_kind ?? "lead") !== "customer_tracking") {
+        return fail("Somente clientes em acompanhamento podem ser vinculados ao portal.", 400);
+      }
+
+      const [project] = await sql`
+        select id::text as id
+        from public.project_tracking_projects
+        where current_tracking_lead_id = ${id}
+        limit 1
+      `;
+
+      if (!project?.id) {
+        return fail("Nenhum projeto de acompanhamento foi encontrado para este cliente.", 404);
+      }
+
+      if (clientUserId) {
+        const [clientUser] = await sql`
+          select
+            p.id::text as id,
+            p.full_name,
+            p.email,
+            p.access_status::text as access_status,
+            p.is_active
+          from public.profiles p
+          where p.id = ${clientUserId}
+            and not exists (
+              select 1
+              from public.user_roles ur
+              where ur.user_id = p.id
+                and ur.role in ('admin', 'gestor', 'consultor', 'visualizador')
+            )
+          limit 1
+        `;
+
+        if (!clientUser) {
+          return fail("Usuario cliente nao encontrado.", 404);
+        }
+
+        await sql`
+          insert into public.user_roles (user_id, role)
+          values (${clientUserId}, 'cliente')
+          on conflict (user_id, role) do nothing
+        `;
+
+        await sql`
+          update public.profiles
+          set access_status = 'active',
+              is_active = true
+          where id = ${clientUserId}
+        `;
+
+        await sql`
+          update public.project_tracking_projects
+          set client_portal_user_id = ${clientUserId}
+          where id = ${project.id as string}
+        `;
+
+        return json({
+          project_id: project.id,
+          client_user: {
+            id: clientUser.id,
+            full_name: (clientUser.full_name as string | null) ?? null,
+            email: (clientUser.email as string | null) ?? null,
+            access_status: "active",
+            is_active: true,
+          },
+        });
+      }
+
+      await sql`
+        update public.project_tracking_projects
+        set client_portal_user_id = null
+        where id = ${project.id as string}
+      `;
+
+      return json({
+        project_id: project.id,
+        client_user: null,
+      });
+    }
+
     if (action === "create") {
       if (!flags.canCreate) return fail("Sem permissao para criar leads.", 403);
       const lead = prepareLeadPayload(cleanLeadPayload(body.lead));
       assertFunnelAccess(session, lead.funnel_id as string | null | undefined);
       await assertStageBelongsToFunnel(lead.stage_id, lead.funnel_id);
+      const targetFunnel = await getFunnelSnapshot(lead.funnel_id as string | null | undefined);
+      if (!targetFunnel) {
+        return fail("Funil informado nao encontrado.", 400);
+      }
+      const entityKind: LeadEntityKind = targetFunnel.module === "customer_tracking" ? "customer_tracking" : "lead";
+      const trackingFlowKey = entityKind === "customer_tracking"
+        ? normalizeTrackingFlowKey(targetFunnel.tracking_flow_key)
+        : null;
+      const sourceLeadId = entityKind === "customer_tracking" ? crypto.randomUUID() : null;
+      if (entityKind === "customer_tracking" && !trackingFlowKey) {
+        return fail("O fluxo de acompanhamento selecionado nao esta configurado.", 400);
+      }
       if (flags.isConsultor && !flags.canManageAll && lead.owner_id && lead.owner_id !== userId) {
         return fail("Consultores so podem criar leads proprios ou sem responsavel.", 403);
       }
@@ -775,7 +949,7 @@ serve(async (req) => {
           has_been_contacted, contact_method, next_follow_up, loss_reason, notes, additional_contacts, tax_regime,
           monthly_revenue_managerial, monthly_revenue_fiscal, monthly_invoice_count, payroll_gross_value,
           bank_account_count, bank_accounts_split, financial_system, accounting_pain_points, company_maturity, entity_kind,
-          service_types, service_details, position, created_by, updated_by
+          tracking_flow_key, source_lead_id, service_types, service_details, position, created_by, updated_by
         ) values (
           ${lead.funnel_id as string}, ${lead.company_or_person as string}, ${lead.contact_name ?? null}, ${lead.phone ?? null},
           ${lead.email ?? null}, ${lead.employee_count ?? null}, ${lead.employee_count_clt ?? null}, ${lead.employee_count_pj ?? null},
@@ -788,13 +962,21 @@ serve(async (req) => {
           ${lead.additional_contacts ?? []}, ${lead.tax_regime ?? null}, ${lead.monthly_revenue_managerial ?? null},
           ${lead.monthly_revenue_fiscal ?? null}, ${lead.monthly_invoice_count ?? null}, ${lead.payroll_gross_value ?? null},
           ${lead.bank_account_count ?? null}, ${lead.bank_accounts_split ?? null}, ${lead.financial_system ?? null},
-          ${lead.accounting_pain_points ?? null}, ${lead.company_maturity ?? null}, ${"lead"}, ${lead.service_types ?? []},
-          ${lead.service_details ?? null},
+          ${lead.accounting_pain_points ?? null}, ${lead.company_maturity ?? null}, ${entityKind},
+          ${trackingFlowKey}, ${sourceLeadId}, ${lead.service_types ?? []}, ${lead.service_details ?? null},
           ${lead.position ?? 0}, ${userId}, ${userId}
         )
         returning *
       `;
-      await logActivity(created.id, "lead_created", `Lead criado: ${created.company_or_person}`, userId);
+      await logActivity(
+        created.id,
+        "lead_created",
+        entityKind === "customer_tracking"
+          ? `Cliente em acompanhamento criado: ${created.company_or_person}`
+          : `Lead criado: ${created.company_or_person}`,
+        userId,
+        entityKind === "customer_tracking" ? { flow_key: trackingFlowKey } : null,
+      );
       const hydratedLead = await attachTrackingCode(created as LeadRow);
       return json({ lead: normalizeLead(hydratedLead) }, 201);
     }

@@ -772,7 +772,7 @@ export type Database = {
         | "lead_created"
         | "lead_updated"
         | "owner_change"
-      app_role: "admin" | "user" | "gestor" | "consultor" | "visualizador"
+      app_role: "admin" | "user" | "gestor" | "consultor" | "visualizador" | "cliente"
       user_access_status: "pending" | "active" | "suspended" | "inactive"
       contact_method:
         | "whatsapp"
@@ -918,7 +918,7 @@ export const Constants = {
         "lead_updated",
         "owner_change",
       ],
-      app_role: ["admin", "user", "gestor", "consultor", "visualizador"],
+      app_role: ["admin", "user", "gestor", "consultor", "visualizador", "cliente"],
       user_access_status: ["pending", "active", "suspended", "inactive"],
       contact_method: [
         "whatsapp",
